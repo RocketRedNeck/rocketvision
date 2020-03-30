@@ -30,7 +30,7 @@ class Capture:
 
         # Default fps to 30
 
-        print("Creating BucketCapture for " + name)
+        print("Creating Capture for " + name)
         
         self._lock = Lock()
         self._condition = Condition()
@@ -57,20 +57,20 @@ class Capture:
         self.count = 0
         self.outCount = self.count
 
-        print("BucketCapture created for " + self.name)
+        print("Capture created for " + self.name)
 
     def start(self):
 
         
         # start the thread to read frames from the video stream
-        print("STARTING BucketCapture for " + self.name)
+        print("STARTING Capture for " + self.name)
         t = Thread(target=self.update, args=())
         t.daemon = True
         t.start()
         return self
 
     def update(self):
-        print("BucketCapture for " + self.name + " RUNNING")
+        print("Capture for " + self.name + " RUNNING")
 
         # keep looping infinitely until the thread is stopped
         self.stopped = False
@@ -217,7 +217,7 @@ class Capture:
             self.duration.update()
 
                 
-        print("BucketCapture for " + self.name + " STOPPING")
+        print("Capture for " + self.name + " STOPPING")
 
     def read(self):
         # return the frame most recently read if the frame

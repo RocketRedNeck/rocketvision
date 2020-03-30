@@ -8,7 +8,7 @@ from rocketvision.duration import Duration
 
 class Display:
     def __init__(self, mode, cams, procs):
-        print("Creating BucketDisplay")
+        print("Creating Display")
         self.fps = Rate()
         self.duration = Duration()
         self.mode = mode
@@ -25,10 +25,10 @@ class Display:
         self._stop = False
         self.stopped = True
 
-        print("BucketDisplay created")
+        print("Display created")
         
     def start(self):
-        print("STARTING BucketDisplay")
+        print("STARTING Display")
         t = Thread(target=self.update, args=())
         t.daemon = True
         t.start()
@@ -38,7 +38,7 @@ class Display:
         self.mode = mode
 
     def update(self):
-        print("BucketDisplay RUNNING")
+        print("Display RUNNING")
         # keep looping infinitely until the thread is stopped
         self.stopped = False
         self.fps.start()
@@ -85,7 +85,7 @@ class Display:
               
             self.duration.update()                
                 
-        print("BucketDisplay for " + self.name + " STOPPING")
+        print("Display for " + self.name + " STOPPING")
           
     def stop(self):
         # indicate that the thread should be stopped

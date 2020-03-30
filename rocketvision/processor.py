@@ -8,7 +8,7 @@ from rocketvision.duration import Duration
 
 class Processor:
     def __init__(self,stream,ipdictionary, ipselection):
-        print("Creating BucketProcessor for " + stream.name)
+        print("Creating Processor for " + stream.name)
         self._lock = Lock()
         self._condition = Condition()
         self.fps = Rate()
@@ -29,17 +29,17 @@ class Processor:
         self._stop = False
         self.stopped = True
 
-        print("BucketProcessor created for " + self.name)
+        print("Processor created for " + self.name)
         
     def start(self):
-        print("STARTING BucketProcessor for " + self.name)
+        print("STARTING Processor for " + self.name)
         t = Thread(target=self.update, args=())
         t.daemon = True
         t.start()
         return self
 
     def update(self):
-        print("BucketProcessor for " + self.name + " RUNNING")
+        print("Processor for " + self.name + " RUNNING")
         # keep looping infinitely until the thread is stopped
         self.stopped = False
         self.fps.start()
@@ -82,7 +82,7 @@ class Processor:
 
             self.duration.update()
                 
-        print("BucketProcessor for " + self.name + " STOPPING")
+        print("Processor for " + self.name + " STOPPING")
 
     def updateSelection(self, ipselection):
         self.ipselection = ipselection
