@@ -57,6 +57,8 @@ class Capture:
         self.count = 0
         self.outCount = self.count
 
+        self.monochrome = False
+
         print("Capture created for " + self.name)
 
     def start(self):
@@ -120,6 +122,8 @@ class Capture:
         print("CHANNEL:", self.camera.get(cv2.CAP_PROP_CHANNEL))
         print("AUTOFOCUS:", self.camera.get(cv2.CAP_PROP_AUTOFOCUS))
         print("AUTOEXP:", self.camera.get(cv2.CAP_PROP_AUTO_EXPOSURE))
+        self.exposure = self.camera.get(cv2.CAP_PROP_EXPOSURE)
+        print("EXPOSURE:", self.exposure)
         print("PIXFMT:",self.camera.get(cv2.CAP_PROP_CODEC_PIXEL_FORMAT))
 
         if platform.system() == "Linux":
@@ -129,7 +133,7 @@ class Capture:
 
         # print("----------------------")
         # self.camera.set(cv2.CAP_PROP_CHANNEL,1)
-        # self.camera.set(cv2.CAP_PROP_AUTOFOCUS, 1)
+        self.camera.set(cv2.CAP_PROP_AUTOFOCUS, 1)
         self.camera.set(cv2.CAP_PROP_AUTO_EXPOSURE, 1)
         # print("CHANNEL:", self.camera.get(cv2.CAP_PROP_CHANNEL))
         # print("AUTOFOCUS:", self.camera.get(cv2.CAP_PROP_AUTOFOCUS))
@@ -153,15 +157,14 @@ class Capture:
         
         self.camera.set(cv2.CAP_PROP_FPS, self.set_fps)
 
-        # self.camera.setExposureManual(self.exposure)
-        #self.camera.set(cv2.CAP_PROP_EXPOSURE, self.exposure)
-
         # self.camera.setBrightness(1)
         #self.camera.set(cv2.CAP_PROP_BRIGHTNESS, self.brightness)
 
         # p = self.camera.enumerateVideoModes()
         # for pi in p:
         #     print(pi.fps, pi.height, pi.width, pi.pixelFormat)
+
+        self.setMonochrome(self.monochrome)
             
         count = 0
         while True:
@@ -278,8 +281,15 @@ class Capture:
             self.iso = self.iso - 100
             self.camera.set(cv2.CAP_PROP_ISO_SPEED, self.iso)
             print("ISO = " + str(self.iso))
+        elif key == ord('m'):
+            self.setMonochrome(not self.monochrome)
+            print("MONOCHROME = " + str(self.monochrome))
 
         return False
+
+    def setMonochrome(self, monochrome):
+        self.monochrome = monochrome
+        self.camera.set(cv2.CAP_PROP_MONOCHROME, 1 if self.monochrome else 0)
 
     def updateExposure(self, exposure):
         self.exposure = exposure

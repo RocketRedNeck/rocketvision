@@ -95,7 +95,7 @@ socket.connect('tcp://'+args['address']+':'+args['port'])
 nada = Nada()
 faces = Faces()
 balls = FindBalls()
-yolo = Yolo() # use defaults for now
+yolo = Yolo(img_size=256) # default is 512 which yeilds about 3.8 fps, 384 --> 5 fps, 256 --> 7 fps
 yolotiny = Yolo(cfg='ultrayolo/cfg/yolov3-tiny.cfg', \
                weights='ultrayolo/weights/yolov3-tiny.pt', \
                conf_thres = 0.2)

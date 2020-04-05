@@ -84,7 +84,10 @@ class Yolo:
 
         # Get names and colors
         self.names = load_classes(self.names)
-        self.colors = [[random.randint(0, 255) for _ in range(3)] for _ in range(len(self.names))]       
+        self.colors = [[random.randint(0, 255) for _ in range(3)] for _ in range(len(self.names))] 
+
+        self.lastframe = None
+        self.firstpass = False      
 
     def process(self, source0):
         """
@@ -93,10 +96,21 @@ class Yolo:
         # Run inference
         t0 = time.time()
 
-        img0 = [source0.copy()]
+        contours = None
+        if self.firstpass:
+            # Use frame differences to mark moving objects at the end
+            difference = cv2.absdiff(self.lastframe, source0)
+            grayscale = cv2.cvtColor(difference, cv2.COLOR_BGR2GRAY)
+            blur = cv2.GaussianBlur(grayscale, (5, 5), 0)
+            _, threshold = cv2.threshold(blur, 35, 255, cv2.THRESH_BINARY)
+            dilated = cv2.dilate(threshold, None, iterations=10)
+            contours, _ = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        self.lastframe = source0.copy()
+        self.firstpass = True
 
         # Letterbox
-        img = [letterbox(x, new_shape=self.img_size, auto=True, interp=cv2.INTER_LINEAR)[0] for x in img0]
+        img = [letterbox(x, new_shape=self.img_size, auto=True, interp=cv2.INTER_LINEAR)[0] for x in [source0]]
 
         # Stack
         img = np.stack(img, 0)
@@ -141,6 +155,20 @@ class Yolo:
                     plot_one_box(xyxy, source0, label=label, color=self.colors[int(cls)])
 
             # Print time (inference + NMS)
-            print('%sDone. (%.3fs)' % (s, t2 - t1))
+            #print('%sDone. (%.3fs)' % (s, t2 - t1))
 
-        return source0
+        # make moving objects "glow"
+        if contours != None:
+            cntsSorted = sorted(contours, key=lambda x: cv2.contourArea(x))
+            for contour in cntsSorted[:10]:
+                area = cv2.contourArea(contour)
+                if area < 950:
+                    continue
+
+                polyframe = source0.copy()
+                cv2.fillPoly(polyframe, pts =contours, color=(0,255,0))
+                cv2.addWeighted(source0,0.75,polyframe,0.25,0,dst=source0)
+                #cv2.drawContours(source0, contours, -1, (255, 255, 0), 3)
+                #(x, y, w, h) = cv2.boundingRect(contour)
+                #cv2.rectangle(frame1, (x, y), (x+w, y+h), (0, 255, 0), 2)
+
