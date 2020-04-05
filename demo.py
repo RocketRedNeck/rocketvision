@@ -71,7 +71,7 @@ from yolo import Yolo
 from resnet50 import ResNet50
 
 # And so it begins
-print("Starting BUCKET VISION!")
+print("Starting ROCKET VISION!")
 
 context = zmq.Context()
 socket = context.socket(zmq.PUB)
@@ -136,7 +136,7 @@ backCam = rv.Capture(name="BackCam",\
                         exposure=BACK_CAM_NORMAL_EXPOSURE,\
                         set_fps=30).start()
 
-print("Waiting for BucketCapture to start...")
+print("Waiting for Capture to start...")
 while ((frontCam.isStopped() == True)):
     time.sleep(0.001)
 while ((backCam.isStopped() == True)):
@@ -164,13 +164,13 @@ frontProcessor = rv.Processor(frontCam,pipes,'yolo').start()
 backProcessor  = rv.Processor(backCam,pipes,'nada').start()
 
 
-print("Waiting for BucketProcessors to start...")
+print("Waiting for Processors to start...")
 while ((frontProcessor.isStopped() == True)):
     time.sleep(0.001)
 while ((backProcessor.isStopped() == True)):
     time.sleep(0.001)
 
-print("BucketProcessors appear online!")
+print("Processors appear online!")
 
 # Loop forever displaying the images for initial testing
 #
@@ -193,7 +193,7 @@ processor = {'frontCam' : frontProcessor,
 
         
 # Start the display loop
-print("Waiting for BucketDisplay to start...")
+print("Waiting for Display to start...")
 display = rv.Display('frontCam', camera, processor).start()
 #backDisplay = Display('backCam', camera, processor).start()
 
@@ -257,17 +257,17 @@ while (True):
 # NOTE: NOTE: NOTE:
 # Sometimes the exit gets messed up, but for now we just don't care
 
-#stop the bucket server and processors
+#stop the capture server and processors
 
 frontProcessor.stop()      # stop this first to make the server exit
 #backProcessor.stop()
 
-print("Waiting for BucketProcessors to stop...")
+print("Waiting for Processors to stop...")
 while ((frontProcessor.isStopped() == False)):
     time.sleep(0.001)
 #while ((backProcessor.isStopped() == False)):
 #    time.sleep(0.001)
-print("BucketProcessors appear to have stopped.")
+print("Processors appear to have stopped.")
 
 display.stop()
 print("Waiting for Display to stop...")
@@ -280,12 +280,12 @@ print("Display appears to have stopped.")
 frontCam.stop()
 #backCam.stop()
 
-print("Waiting for BucketCaptures to stop...")
+print("Waiting for Captures to stop...")
 while ((frontCam.isStopped() == False)):
     time.sleep(0.001)
 # while ((backCam.isStopped() == False)):
 #     time.sleep(0.001)
-print("BucketCaptures appears to have stopped.")
+print("Captures appears to have stopped.")
  
 # do a bit of cleanup
 cv2.destroyAllWindows()
