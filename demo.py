@@ -42,6 +42,10 @@ import time
 import zmq
 import os
 
+import torch
+torch.no_grad()
+torch.cuda.empty_cache()
+
 # import our classes
 import rocketvision as rv
     
@@ -63,6 +67,8 @@ import rocketvision as rv
 from nada import Nada
 from faces import Faces
 from findballs import FindBalls
+from yolo import Yolo
+from resnet50 import ResNet50
 
 # And so it begins
 print("Starting BUCKET VISION!")
@@ -89,6 +95,11 @@ socket.connect('tcp://'+args['address']+':'+args['port'])
 nada = Nada()
 faces = Faces()
 balls = FindBalls()
+yolo = Yolo() # use defaults for now
+yolotiny = Yolo(cfg='ultrayolo/cfg/yolov3-tiny.cfg', \
+               weights='ultrayolo/weights/yolov3-tiny.pt', \
+               conf_thres = 0.2)
+resnet = ResNet50()
 
 # NOTE: NOTE: NOTE:
 #
@@ -97,7 +108,7 @@ balls = FindBalls()
 # Our implementation is forced to use v4l2-ctl (Linux) to make the exposure control work because our OpenCV
 # port does not seem to play well with the exposure settings (produces either no answer or causes errors depending
 # on the camera used)
-FRONT_CAM_NORMAL_EXPOSURE = -1
+FRONT_CAM_NORMAL_EXPOSURE = 6
 BACK_CAM_NORMAL_EXPOSURE  = -5
 
 width  = 640
@@ -144,10 +155,13 @@ print("Capture appears online!")
 
 pipes = {'nada'  : nada,
          'faces' : faces,
-         'balls' : balls}
+         'balls' : balls,
+         'yolo'  : yolo,
+         'yolotiny' : yolotiny,
+         'resnet'   : resnet}
  
-frontProcessor = rv.Processor(frontCam,pipes,'nada').start()
-backProcessor  = rv.Processor(backCam,pipes,'faces').start()
+frontProcessor = rv.Processor(frontCam,pipes,'yolo').start()
+backProcessor  = rv.Processor(backCam,pipes,'nada').start()
 
 
 print("Waiting for BucketProcessors to start...")

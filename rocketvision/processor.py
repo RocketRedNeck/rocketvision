@@ -74,7 +74,7 @@ class Processor:
                 self._lock.acquire()
                 self.count = count
                 self.isNew = isNew
-                self.frame = self._frame
+                self.frame = self._frame.copy()
                 self.timestamp = timestamp
                 self._lock.release()
                 self._condition.notifyAll()

@@ -154,10 +154,10 @@ class Capture:
         self.camera.set(cv2.CAP_PROP_FPS, self.set_fps)
 
         # self.camera.setExposureManual(self.exposure)
-        self.camera.set(cv2.CAP_PROP_EXPOSURE, self.exposure)
+        #self.camera.set(cv2.CAP_PROP_EXPOSURE, self.exposure)
 
         # self.camera.setBrightness(1)
-        self.camera.set(cv2.CAP_PROP_BRIGHTNESS, self.brightness)
+        #self.camera.set(cv2.CAP_PROP_BRIGHTNESS, self.brightness)
 
         # p = self.camera.enumerateVideoModes()
         # for pi in p:
