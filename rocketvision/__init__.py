@@ -2,7 +2,7 @@
 """
 RocketVision
 
-Astrodynamic Toolkit in the Python Environment
+Vision management pipeline in the Python Environment
 
 Copyright (c) 2020 - Michael Kessel (mailto: the.rocketredneck@gmail.com)
 
