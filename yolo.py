@@ -89,7 +89,7 @@ class Yolo:
         self.lastframe = None
         self.firstpass = False      
 
-    def process(self, source0):
+    def process(self, source0, overlay = True):
         """
         Runs the pipeline and sets all outputs to new values.
         """
@@ -97,14 +97,14 @@ class Yolo:
         t0 = time.time()
 
         contours = None
-        if self.firstpass:
-            # Use frame differences to mark moving objects at the end
-            difference = cv2.absdiff(self.lastframe, source0)
-            grayscale = cv2.cvtColor(difference, cv2.COLOR_BGR2GRAY)
-            blur = cv2.GaussianBlur(grayscale, (5, 5), 0)
-            _, threshold = cv2.threshold(blur, 35, 255, cv2.THRESH_BINARY)
-            dilated = cv2.dilate(threshold, None, iterations=10)
-            contours, _ = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        # if self.firstpass:
+        #     # Use frame differences to mark moving objects at the end
+        #     difference = cv2.absdiff(self.lastframe, source0)
+        #     grayscale = cv2.cvtColor(difference, cv2.COLOR_BGR2GRAY)
+        #     blur = cv2.GaussianBlur(grayscale, (5, 5), 0)
+        #     _, threshold = cv2.threshold(blur, 35, 255, cv2.THRESH_BINARY)
+        #     dilated = cv2.dilate(threshold, None, iterations=10)
+        #     contours, _ = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         self.lastframe = source0.copy()
         self.firstpass = True
@@ -138,6 +138,7 @@ class Yolo:
             pred = apply_classifier(pred, self.modelc, img, self.im0s)
 
         # Process detections
+        self.meta = []
         for i, det in enumerate(pred):  # detections per image
             s = '%gx%g ' % img.shape[2:]  # print string
             if det is not None and len(det):
@@ -152,23 +153,31 @@ class Yolo:
                 # Write results
                 for *xyxy, conf, cls in det:
                     label = '%s %.2f' % (self.names[int(cls)], conf)
-                    plot_one_box(xyxy, source0, label=label, color=self.colors[int(cls)])
+                    self.meta.append([xyxy, label, cls])
+                
+                if overlay:
+                    self.overlay(self.meta,source0)
 
             # Print time (inference + NMS)
             #print('%sDone. (%.3fs)' % (s, t2 - t1))
 
-        # make moving objects "glow"
-        if contours != None:
-            cntsSorted = sorted(contours, key=lambda x: cv2.contourArea(x))
-            for contour in cntsSorted[:10]:
-                area = cv2.contourArea(contour)
-                if area < 950:
-                    continue
+        # # make moving objects "glow"
+        # if contours != None:
+        #     cntsSorted = sorted(contours, key=lambda x: cv2.contourArea(x))
+        #     for contour in cntsSorted[:10]:
+        #         area = cv2.contourArea(contour)
+        #         if area < 950:
+        #             continue
 
-                polyframe = source0.copy()
-                cv2.fillPoly(polyframe, pts =contours, color=(0,255,0))
-                cv2.addWeighted(source0,0.75,polyframe,0.25,0,dst=source0)
-                #cv2.drawContours(source0, contours, -1, (255, 255, 0), 3)
-                #(x, y, w, h) = cv2.boundingRect(contour)
-                #cv2.rectangle(frame1, (x, y), (x+w, y+h), (0, 255, 0), 2)
+        #         polyframe = source0.copy()
+        #         cv2.fillPoly(polyframe, pts =contours, color=(0,255,0))
+        #         cv2.addWeighted(source0,0.75,polyframe,0.25,0,dst=source0)
+        #         #cv2.drawContours(source0, contours, -1, (255, 255, 0), 3)
+        #         #(x, y, w, h) = cv2.boundingRect(contour)
+        #         #cv2.rectangle(frame1, (x, y), (x+w, y+h), (0, 255, 0), 2)
+        return self.meta
 
+    def overlay(self, meta, img):
+        for xyxy, label, cls in meta:
+            plot_one_box(xyxy, img, label=label, color=self.colors[int(cls)])
+            #plot_one_tag(xyxy, img, label=label, color=self.colors[int(cls)])
