@@ -19,6 +19,7 @@ args = vars(parser.parse_args())
 from threading import Thread
 from threading import Event
 import time
+import datetime
 from rocketvision.rate import Rate
 
 import cv2
@@ -75,8 +76,8 @@ class ImageCapture:
         self.stopped = False
         self.running = True
         while (self.running):
-            ret,self.img = self.cam.read()
-            self.timestamp = time.time()
+            ret,self.img = self.cam.read()            
+            self.timestamp = datetime.datetime.now()
             if (ret):
                 self.count += 1
                 self.fps.update()
@@ -125,15 +126,16 @@ while running:
                 _, frame.jpg = cv2.imencode('.jpeg', img)
                 #socket.send(buffer)
                 socket.send_pyobj(frame)
-            else:
+            else:                
+                timestamp_string = datetime.datetime.fromtimestamp(frame.timestamp.timestamp(),datetime.timezone.utc).isoformat()
+                cv2.putText(img,timestamp_string,(0,20),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
+
+                cv2.putText(img,"CamFPS : {:.1f}".format(frame.camfps) + " Frame: " + str(frame.count),(0,40),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
                 cv2.imshow("camera", img)
                 
             fps.update()
             frame.streamfps = fps.fps()
-            
-        if (0 == frame.count % 10):
-            print(f'CAM: {cam.fps.fps()} DISP: {fps.fps()}')
-    
+                
     key = cv2.waitKey(1)
     
     if key == 27:
