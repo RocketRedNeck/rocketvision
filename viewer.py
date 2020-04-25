@@ -27,18 +27,37 @@ footage_socket.setsockopt_string(zmq.SUBSCRIBE, '')
 
 footage_socket.RCVTIMEO = 1000 # in milliseconds
 count = 0
-while True:
+running = True
+
+# from turbojpeg import TurboJPEG
+# jpeg = TurboJPEG()
+
+from rocketvision import Rate
+fps = Rate()
+fps.start()
+
+count = 0
+while running:
     try:
         frame = footage_socket.recv()
         npimg = np.fromstring(frame, dtype=np.uint8)
         source = cv2.imdecode(npimg, 1)
+        # source = jpeg.decode(npimg)
         cv2.imshow("Stream", source)
-        cv2.waitKey(1)
+        key = cv2.waitKey(1)
+        fps.update()
+
+        count += 1
+        if (0 == count % 10):
+            print(fps.fps())
+
+        if key == 27:
+            running = False
 
     except KeyboardInterrupt:
-        cv2.destroyAllWindows()
         break
     except zmq.error.Again:
         count +=1
         print("Waiting... ", count)
-        pass
+
+cv2.destroyAllWindows()
