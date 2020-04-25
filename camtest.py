@@ -30,6 +30,7 @@ class ImageCapture:
         self.img = None
         self.count = 0
         self.fps = Rate()
+        self.timestamp = 0
         self.event = Event()
         self.running = False
         
@@ -64,9 +65,9 @@ class ImageCapture:
     
     def read(self):
         if self.event.wait(0.250):
-            return (self.count, self.img)
+            return (self.count, self.img, self.timestamp)
         else:
-            return (None, None)
+            return (None, None, None)
 
     def update(self):
         print("ImageCapture STARTED!")
@@ -75,6 +76,7 @@ class ImageCapture:
         self.running = True
         while (self.running):
             ret,self.img = self.cam.read()
+            self.timestamp = time.time()
             if (ret):
                 self.count += 1
                 self.fps.update()
@@ -97,27 +99,39 @@ stream = False
 
 running = True
 
-#from turbojpeg import TurboJPEG
-#jpeg = TurboJPEG()
-
 fps = Rate()
 fps.start()
 
-count = 0
+lastframecount = 0
+
+class Frame:
+    def __init__(self):
+        self.timestamp = 0
+        self.count = 0
+        self.jpg = 0
+        self.camfps = 0
+        self.streamfps = 0
+
+frame = Frame()
+
 while running:
-    framecount, frame = cam.read()
+    frame.count, img, frame.timestamp = cam.read()
+    frame.camfps = cam.fps.fps()
     
-    if (framecount != None):
-        if stream:
-            encoded, buffer = cv2.imencode('.jpeg', frame)
-            #buffer = jpeg.encode(frame)
-            socket.send(buffer)
-        else:
-            cv2.imshow("camera", frame)
+    if (frame.count != None):
+        if (frame.count != lastframecount):
+            lastframecount = frame.count
+            if stream:
+                _, frame.jpg = cv2.imencode('.jpeg', img)
+                #socket.send(buffer)
+                socket.send_pyobj(frame)
+            else:
+                cv2.imshow("camera", img)
+                
+            fps.update()
+            frame.streamfps = fps.fps()
             
-        fps.update()
-        count += 1
-        if (0 == count % 10):
+        if (0 == frame.count % 10):
             print(f'CAM: {cam.fps.fps()} DISP: {fps.fps()}')
     
     key = cv2.waitKey(1)
