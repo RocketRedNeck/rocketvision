@@ -133,6 +133,7 @@ processor.start()
 while running:
     try:
         frame = footage_socket.recv_pyobj()
+        now_string = datetime.datetime.fromtimestamp(datetime.datetime.now().timestamp(),datetime.timezone.utc).isoformat()
         source = cv2.imdecode(frame.jpg, 1)
 
         # TODO: Pass image to processor and get previous meta
@@ -141,11 +142,14 @@ while running:
         (procCount, meta) = processor.process(source,frame.count)
         processor.overlay(meta, source)
 
-        timestamp_string = datetime.datetime.fromtimestamp(frame.timestamp.timestamp(),datetime.timezone.utc).isoformat()
-        cv2.putText(source,timestamp_string,(0,20),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
+        cv2.putText(source,"REC_T: " + now_string,(0,20),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
 
-        cv2.putText(source,"CamFPS : {:.1f}".format(frame.camfps) + " StrFPS : {:.1f}".format(frame.streamfps) + " Frame: " + str(frame.count),(0,40),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
-        #cv2.putText(source,"ProcFPS: {:.1f}".format(frame.streamfps) ,(0,60),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
+        timestamp_string = datetime.datetime.fromtimestamp(frame.timestamp.timestamp(),datetime.timezone.utc).isoformat()
+        cv2.putText(source,"CAM_T: " + timestamp_string,(0,40),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
+
+        cv2.putText(source,"CAM_F: {:.1f}".format(frame.camfps) + " StrFPS : {:.1f}".format(frame.streamfps) + " Frame: " + str(frame.count),(0,60),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
+
+        cv2.putText(source,"PRC_F: {:.1f}".format(processor.fps.fps()) + " Frame: " + str(procCount) + " (" + str(procCount - frame.count) +")" ,(0,80),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
 
         cv2.imshow("Stream", source)
         key = cv2.waitKey(1)
