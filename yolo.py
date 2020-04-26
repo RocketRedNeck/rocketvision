@@ -153,7 +153,8 @@ class Yolo:
                 # Write results
                 for *xyxy, conf, cls in det:
                     label = '%s %.2f' % (self.names[int(cls)], conf)
-                    self.meta.append([xyxy, label, cls])
+                    if "person" in label:
+                        self.meta.append([xyxy, label, cls])
                 
                 if overlay:
                     self.overlay(self.meta,source0)
