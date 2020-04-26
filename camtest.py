@@ -28,6 +28,8 @@ class ImageCapture:
     def __init__(self, src = 0):
         self.src = src
         self.cam = cv2.VideoCapture(src)
+        self.cam.set(cv2.CAP_PROP_FRAME_WIDTH, 640) #1280)
+        self.cam.set(cv2.CAP_PROP_FRAME_HEIGHT,480) #720)
         self.img = None
         self.count = 0
         self.fps = Rate()
@@ -126,12 +128,13 @@ while running:
                 _, frame.jpg = cv2.imencode('.jpeg', img)
                 #socket.send(buffer)
                 socket.send_pyobj(frame)
-            else:                
-                timestamp_string = datetime.datetime.fromtimestamp(frame.timestamp.timestamp(),datetime.timezone.utc).isoformat()
-                cv2.putText(img,timestamp_string,(0,20),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
-
-                cv2.putText(img,"CamFPS : {:.1f}".format(frame.camfps) + " Frame: " + str(frame.count),(0,40),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
-                cv2.imshow("camera", img)
+                
+            timestamp_string = datetime.datetime.fromtimestamp(frame.timestamp.timestamp(),datetime.timezone.utc).isoformat()
+            cv2.putText(img,timestamp_string,(0,20),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
+            cv2.putText(img,"CamFPS : {:.1f}".format(frame.camfps) + " Frame: " + str(frame.count),(0,40),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
+            cv2.putText(img,f"Stream : {stream}",(0,60),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
+            
+            cv2.imshow("camera", img)
                 
             fps.update()
             frame.streamfps = fps.fps()
@@ -142,6 +145,5 @@ while running:
         running = False
     elif key == ord('s'):
         stream = not stream
-        print("STREAMING = ", stream)
     
     
