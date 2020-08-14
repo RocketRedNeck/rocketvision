@@ -182,3 +182,7 @@ class Yolo:
         for xyxy, label, cls in meta:
             plot_one_box(xyxy, img, label=label, color=self.colors[int(cls)])
             #plot_one_tag(xyxy, img, label=label, color=self.colors[int(cls)])
+
+    def list_overlay(self, meta, srcid, count):
+        for x, label, cls in meta:
+            print(f'{srcid} - {count} : {label} @ {int(x[0]), int(x[1])}')

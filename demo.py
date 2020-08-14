@@ -96,10 +96,10 @@ nada = Nada()
 faces = Faces()
 balls = FindBalls()
 yolo = Yolo(img_size=256) # default is 512 which yeilds about 3.8 fps, 384 --> 5 fps, 256 --> 7 fps
-yolotiny = Yolo(cfg='ultrayolo/cfg/yolov3-tiny.cfg', \
-               weights='ultrayolo/weights/yolov3-tiny.pt', \
-               conf_thres = 0.2)
-resnet = ResNet50()
+# yolotiny = Yolo(cfg='ultrayolo/cfg/yolov3-tiny.cfg', \
+#                weights='ultrayolo/weights/yolov3-tiny.pt', \
+#                conf_thres = 0.2)
+# resnet = ResNet50()
 
 # NOTE: NOTE: NOTE:
 #
@@ -129,18 +129,18 @@ frontCam = rv.Capture(name="FrontCam",\
                         height=height,\
                         exposure=FRONT_CAM_NORMAL_EXPOSURE,\
                         set_fps=30).start()
-backCam = rv.Capture(name="BackCam",\
-                        src=sources['usb'],\
-                        width=width,\
-                        height=height,\
-                        exposure=BACK_CAM_NORMAL_EXPOSURE,\
-                        set_fps=30).start()
+# backCam = rv.Capture(name="BackCam",\
+#                         src=sources['usb'],\
+#                         width=width,\
+#                         height=height,\
+#                         exposure=BACK_CAM_NORMAL_EXPOSURE,\
+#                         set_fps=30).start()
 
 print("Waiting for Capture to start...")
 while ((frontCam.isStopped() == True)):
     time.sleep(0.001)
-while ((backCam.isStopped() == True)):
-    time.sleep(0.001)
+# while ((backCam.isStopped() == True)):
+#     time.sleep(0.001)
     
 print("Capture appears online!")
 
@@ -157,18 +157,19 @@ pipes = {'nada'  : nada,
          'faces' : faces,
          'balls' : balls,
          'yolo'  : yolo,
-         'yolotiny' : yolotiny,
-         'resnet'   : resnet}
+        #  'yolotiny' : yolotiny,
+        #  'resnet'   : resnet
+         }
  
 frontProcessor = rv.Processor(frontCam,pipes,'yolo').start()
-backProcessor  = rv.Processor(backCam,pipes,'nada').start()
+# backProcessor  = rv.Processor(backCam,pipes,'nada').start()
 
 
 print("Waiting for Processors to start...")
 while ((frontProcessor.isStopped() == True)):
     time.sleep(0.001)
-while ((backProcessor.isStopped() == True)):
-    time.sleep(0.001)
+# while ((backProcessor.isStopped() == True)):
+#     time.sleep(0.001)
 
 print("Processors appear online!")
 
@@ -185,10 +186,12 @@ print("Processors appear online!")
 # LATER we will create display threads that stream the images as requested at their separate rates.
 #
 
-camera = {'frontCam' : frontCam,
-          'backCam'  : backCam}
-processor = {'frontCam' : frontProcessor,
-             'backCam'  : backProcessor}
+camera = {'frontCam' : frontCam
+        #   'backCam'  : backCam
+          }
+processor = {'frontCam' : frontProcessor
+            #  'backCam'  : backProcessor
+             }
 
 
         
@@ -250,8 +253,8 @@ while (True):
         else:
             if (mode == 'frontCam'):
                 frontCam.processUserCommand(key)
-            else:
-                backCam.processUserCommand(key)        
+            # else:
+            #     backCam.processUserCommand(key)        
 
         
 # NOTE: NOTE: NOTE:

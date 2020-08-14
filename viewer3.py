@@ -1,5 +1,5 @@
 import cv2
-import zmq
+#import zmq
 import numpy as np
 import datetime
 
@@ -17,16 +17,18 @@ parser.add_argument('--address', required=False, default='*',
 help='Interface Address')
 parser.add_argument('--port', required=False, default='5555', 
 help='Port for Receiving')
+parser.add_argument('--n', required=False, default='1')
 
 # Parse the args
-args = vars(parser.parse_args())
+args = parser.parse_args()
+n = int(args.n)
 
-context = zmq.Context()
-footage_socket = context.socket(zmq.SUB)
-footage_socket.bind('tcp://'+args['address']+':'+args['port'])
-footage_socket.setsockopt_string(zmq.SUBSCRIBE, '')
+# context = zmq.Context()
+# footage_socket = context.socket(zmq.SUB)
+# footage_socket.bind('tcp://'+args['address']+':'+args['port'])
+# footage_socket.setsockopt_string(zmq.SUBSCRIBE, '')
 
-footage_socket.RCVTIMEO = 1000 # in milliseconds
+# footage_socket.RCVTIMEO = 1000 # in milliseconds
 count = 0
 running = True
 
@@ -43,7 +45,6 @@ yolo = Yolo(cfg='ultrayolo/cfg/yolov3-tiny.cfg', \
                weights='ultrayolo/weights/yolov3-tiny.pt', \
                conf_thres = 0.2)
 
-
 count = 0
 
 class Frame:
@@ -53,7 +54,6 @@ class Frame:
         self.jpg = 0
         self.camfps = 0
         self.streamfps = 0
-        self.src = 0
 
 from threading import Thread
 from threading import Event
@@ -100,18 +100,17 @@ class ImageProcessor:
     def isRunning(self):
         return self.running
 
-    def process(self, source, srcid, count):
+    def process(self, source, count):
         if not self.event.isSet():
             #print(f"Triggering on {count}")
             # copy previous meta data and start a new processing cycle
             self.count = self._count
             self.meta = self._meta.copy()
             self.img = source
-            self.srcid = srcid
             self._count = count
             self.event.set()
 
-        return (self.count, self.meta, self.srcid)
+        return (self.count, self.meta)
 
     def update(self):
         print("ImageProcessor STARTED!")
@@ -131,48 +130,51 @@ class ImageProcessor:
 
     def overlay(self, meta, source):
         self._process.overlay(meta, source)
-    def list_overlay(self, meta, srcid, count):
-        self._process.list_overlay(meta, srcid, count)
 
 processor = ImageProcessor(yolo)
 processor.start()
 
+# cv2.VideoCapture("rtsp://admin:beaubeau@192.168.0.15:554//h264Preview_01_sub")
+# cv2.VideoCapture("rtsp://admin:beaubeau@192.168.0.15:554//h264Preview_02_sub")
+# cv2.VideoCapture("rtsp://admin:beaubeau@192.168.0.15:554//h264Preview_03_sub")
+# cv2.VideoCapture("rtsp://admin:beaubeau@192.168.0.15:554//h264Preview_04_sub")
+# cv2.VideoCapture("rtsp://admin:beaubeau@192.168.0.15:554//h264Preview_05_sub")
+# cv2.VideoCapture("rtsp://admin:beaubeau@192.168.0.15:554//h264Preview_06_sub")
+# cv2.VideoCapture("rtsp://admin:beaubeau@192.168.0.15:554//h264Preview_07_sub")
+# cv2.VideoCapture("rtsp://admin:beaubeau@192.168.0.15:554//h264Preview_08_sub")
+
+cap = cv2.VideoCapture(f'rtsp://admin:beaubeau@192.168.0.15:554//h264Preview_0{n}_sub')
+
+framecount = 0
 while running:
     try:
-        frame = footage_socket.recv_pyobj()
+        #frame = footage_socket.recv_pyobj()
+        ret, frame = cap.read()
+        framecount += 1
         now_string = datetime.datetime.fromtimestamp(datetime.datetime.now().timestamp(),datetime.timezone.utc).isoformat()
-        source = cv2.imdecode(frame.jpg, 1)
+        source = frame
 
         # TODO: Pass image to processor and get previous meta
         # If the image processor is busy it will simply ignore this image
         # and return the previous meta
-        (procCount, meta, srcid) = processor.process(source, frame.src, frame.count)
-        processor.list_overlay(meta, srcid, procCount)
+        (procCount, meta) = processor.process(source,framecount)
+        processor.overlay(meta, source)
 
-        # cv2.putText(source,"REC_T: " + now_string,(0,20),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
+        cv2.putText(source,"PRC_F: {:.1f}".format(processor.fps.fps()) + " Frame: " + str(procCount) + " (" + str(procCount - framecount) +")" ,(0,20),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
 
-        # timestamp_string = datetime.datetime.fromtimestamp(frame.timestamp.timestamp(),datetime.timezone.utc).isoformat()
-        # cv2.putText(source,"CAM_T: " + timestamp_string,(0,40),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
-
-        # cv2.putText(source,"CAM_F: {:.1f}".format(frame.camfps) + " StrFPS : {:.1f}".format(frame.streamfps) + " Frame: " + str(frame.count),(0,60),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
-
-        #cv2.putText(source,"SRC = " +str(frame.src) + " PRC_F: {:.1f}".format(processor.fps.fps()) + " Frame: " + str(procCount) + " (" + str(procCount - frame.count) +")" ,(0,80),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
-
-        #cv2.imshow("Stream", source)
+        cv2.imshow("Stream", source)
         key = cv2.waitKey(1)
         fps.update()
 
         count += 1
-        # if (0 == count % 10):
-        #     print(f'LOCAL {fps.fps()} : STREAM {frame.streamfps} : DELAY {time.time() - frame.timestamp}')
 
         if key == 27:
             running = False
 
     except KeyboardInterrupt:
         break
-    except zmq.error.Again:
-        count +=1
-        print("Waiting... ", count)
+    except Exception as e:
+        count += 1
+        print(f'{repr(e)} : Waiting... {count}')
 
 cv2.destroyAllWindows()

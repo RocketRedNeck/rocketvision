@@ -90,7 +90,7 @@ class Capture:
         #     print(returned_output.decode("utf-8"))
 
 
-        self.camera = cv2.VideoCapture(self.src,cv2.CAP_GSTREAMER) #apiPreference=cv2.CAP_ANY)
+        self.camera = cv2.VideoCapture(self.src,apiPreference=cv2.CAP_ANY)
 
         # OpenCV VideoCapture properties that can be set()
         # CV_CAP_PROP_POS_MSEC Current position of the video file in milliseconds.
