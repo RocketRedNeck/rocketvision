@@ -1,3 +1,5 @@
+
+import copy
 import cv2
 import zmq
 import numpy as np
@@ -38,10 +40,10 @@ from nada import Nada
 from yolo import Yolo
 
 nada = Nada()
-# yolo = Yolo(img_size=256) # default is 512 which yeilds about 3.8 fps (i7/940MX), 384 --> 5 fps, 256 --> 7 fps
-yolo = Yolo(cfg='ultrayolo/cfg/yolov3-tiny.cfg', \
-               weights='ultrayolo/weights/yolov3-tiny.pt', \
-               conf_thres = 0.2)
+yolo = Yolo(img_size=256, conf_thres = 0.6) # default is 512 which yeilds about 3.8 fps (i7/940MX), 384 --> 5 fps, 256 --> 7 fps
+# yolo = Yolo(cfg='ultrayolo/cfg/yolov3-tiny.cfg', \
+#                weights='ultrayolo/weights/yolov3-tiny.pt', \
+#                conf_thres = 0.2)
 
 
 count = 0
@@ -50,10 +52,10 @@ class Frame:
     def __init__(self):
         self.timestamp = 0
         self.count = 0
-        self.jpg = 0
+        self.img = 0
         self.camfps = 0
         self.streamfps = 0
-        self.src = 0
+        self.srcid = 0
 
 from threading import Thread
 from threading import Event
@@ -66,10 +68,18 @@ class ImageProcessor:
         self.stopped = True
         self._count = 0
         self.count = self._count
+        self._srcid = 0
+        self.srcid = self._srcid
         self._meta = []
         self.meta = self._meta.copy()
+        self._img = []
+        self.outimg = self._img.copy()
+        self._timestamp = 0
+        self.timestamp = self._timestamp
         self.event = Event()
         self.fps = Rate()
+
+        self.history = {}
     
     def start(self, wait = True, timeout = 5.0):        
         # start the thread to read frames from the video stream
@@ -100,18 +110,35 @@ class ImageProcessor:
     def isRunning(self):
         return self.running
 
-    def process(self, source, srcid, count):
+    def process(self, source, srcid, count, timestamp):
+
         if not self.event.isSet():
-            #print(f"Triggering on {count}")
+
+            #print(f"Triggering on CAM {srcid} - FRAME {count}")
             # copy previous meta data and start a new processing cycle
-            self.count = self._count
+            self.outimg = self._img.copy()
+            self.count = copy.copy(self._count)
             self.meta = self._meta.copy()
-            self.img = source
-            self.srcid = srcid
+            self.srcid = copy.copy(self._srcid)
+            self.timestamp = self._timestamp
+
+            # New cycle
+            self._timestamp = timestamp
+            self._img = source
             self._count = count
+            self._srcid = srcid
+
             self.event.set()
 
-        return (self.count, self.meta, self.srcid)
+        if self.srcid in self.history:
+            history = self.history[self.srcid]
+
+            if count == history[0] and timestamp == history[1]:
+                # already processed it
+                self.meta = []
+ 
+        self.history.update({self.srcid : (self.count, self.timestamp, self.outimg, self.meta)})
+        return (self.srcid, self.count, self.timestamp, self.outimg, self.meta)
 
     def update(self):
         print("ImageProcessor STARTED!")
@@ -121,7 +148,7 @@ class ImageProcessor:
         while (self.running):
             if self.event.wait(0.250):
                 #print(f"IMAGE PROCESSING frame {self._count}")
-                self._meta = self._process.process(source0 = self.img, overlay = False)
+                self._meta = self._process.process(source0 = self._img, overlay = False)
                 #print(f"Frame {self._count} Processed")
                 self.fps.update()
                 self.event.clear()
@@ -131,23 +158,28 @@ class ImageProcessor:
 
     def overlay(self, meta, source):
         self._process.overlay(meta, source)
-    def list_overlay(self, meta, srcid, count):
-        self._process.list_overlay(meta, srcid, count)
+    def list_overlay(self, meta, srcid, count, timestamp):
+        self._process.list_overlay(meta, srcid, count, timestamp)
 
 processor = ImageProcessor(yolo)
 processor.start()
-
+lastimage = None
+lastsrc = 0
 while running:
     try:
         frame = footage_socket.recv_pyobj()
-        now_string = datetime.datetime.fromtimestamp(datetime.datetime.now().timestamp(),datetime.timezone.utc).isoformat()
-        source = cv2.imdecode(frame.jpg, 1)
+        #now_string = datetime.datetime.fromtimestamp(datetime.datetime.now().timestamp(),datetime.timezone.utc).isoformat()
+        #source = cv2.imdecode(frame.jpg, 1)
 
         # TODO: Pass image to processor and get previous meta
         # If the image processor is busy it will simply ignore this image
         # and return the previous meta
-        (procCount, meta, srcid) = processor.process(source, frame.src, frame.count)
-        processor.list_overlay(meta, srcid, procCount)
+        (srcid, procCount, timestamp, outimg, meta) = processor.process(frame.img, frame.srcid, frame.count, frame.timestamp)
+        if len(meta) > 0:
+            processor.overlay(meta, outimg)
+            lastimage = outimg.copy()
+            lastsrc = copy.copy(srcid)
+            processor.list_overlay(meta, srcid, procCount, timestamp)
 
         # cv2.putText(source,"REC_T: " + now_string,(0,20),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
 
@@ -158,7 +190,8 @@ while running:
 
         #cv2.putText(source,"SRC = " +str(frame.src) + " PRC_F: {:.1f}".format(processor.fps.fps()) + " Frame: " + str(procCount) + " (" + str(procCount - frame.count) +")" ,(0,80),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
 
-        #cv2.imshow("Stream", source)
+        if lastimage is not None:
+            cv2.imshow(f'CAM {lastsrc}', lastimage)
         key = cv2.waitKey(1)
         fps.update()
 

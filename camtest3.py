@@ -115,32 +115,26 @@ class Frame:
     def __init__(self):
         self.timestamp = 0
         self.count = 0
-        self.jpg = 0
+        self.img = 0
         self.camfps = 0
         self.streamfps = 0
-        self.src = 0
+        self.srcid = 0
 
 frame = Frame()
-frame.src = cam.src
+frame.srcid = cam.src
 
 while running:
-    frame.count, img, frame.timestamp = cam.read()
+    frame.count, frame.img, frame.timestamp = cam.read()
     frame.camfps = cam.fps.fps()
     
     if (frame.count != None):
         if (frame.count != lastframecount):
             lastframecount = frame.count
             if stream:
-                _, frame.jpg = cv2.imencode('.jpeg', img)
-                #socket.send(buffer)
+                #_, frame.jpg = cv2.imencode('.jpeg', img)
                 socket.send_pyobj(frame)
                 
-            # timestamp_string = datetime.datetime.fromtimestamp(frame.timestamp.timestamp(),datetime.timezone.utc).isoformat()
-            # cv2.putText(img,timestamp_string,(0,20),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
-            # cv2.putText(img,"CamFPS : {:.1f}".format(frame.camfps) + " Frame: " + str(frame.count),(0,40),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
-            # cv2.putText(img,f"Stream : {stream}",(0,60),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
-            
-            cv2.imshow("camera", img)
+            cv2.imshow("camera", frame.img)
                 
             fps.update()
             frame.streamfps = fps.fps()

@@ -6,6 +6,7 @@ from ultrayolo.utils.utils import *
 from torchvision import transforms
 
 import cv2
+import datetime
 import torch
 import time
 
@@ -153,7 +154,7 @@ class Yolo:
                 # Write results
                 for *xyxy, conf, cls in det:
                     label = '%s %.2f' % (self.names[int(cls)], conf)
-                    if "person" in label:
+                    if "person" in label or "dog" in label or "cat" in label:
                         self.meta.append([xyxy, label, cls])
                 
                 if overlay:
@@ -183,6 +184,9 @@ class Yolo:
             plot_one_box(xyxy, img, label=label, color=self.colors[int(cls)])
             #plot_one_tag(xyxy, img, label=label, color=self.colors[int(cls)])
 
-    def list_overlay(self, meta, srcid, count):
-        for x, label, cls in meta:
-            print(f'{srcid} - {count} : {label} @ {int(x[0]), int(x[1])}')
+    def list_overlay(self, meta, srcid, count, timestamp):
+        if len(meta) > 0:
+            print('------------------------------------')
+            print(f'{len(meta)} objects detected')
+            for x, label, cls in meta:
+                print(f'{timestamp.strftime("%Y-%m-%d %H:%M:%S")} : CAM {srcid} - FRAME {count} : {label} @ {int(x[0]), int(x[1])}')
