@@ -133,9 +133,11 @@ while running:
             if stream:
                 #_, frame.jpg = cv2.imencode('.jpeg', img)
                 socket.send_pyobj(frame)
-                
-            cv2.imshow("camera", frame.img)
-                
+
+            try:    
+                cv2.imshow(f'Camera {frame.srcid}', frame.img)
+            except Exception as e:
+                print(f'[WARNING] : {repr(e)}')            
             fps.update()
             frame.streamfps = fps.fps()
                 

@@ -75,7 +75,7 @@ class ResNet50:
     #     return img
 
 
-    def process(self, source0):
+    def process(self, source0, overlay = True):
         """
         Runs the pipeline and sets all outputs to new values.
         """
@@ -99,5 +99,8 @@ class ResNet50:
                 for i in range(len(pred_boxes)):
                     cv2.rectangle(source0, pred_boxes[i][0], pred_boxes[i][1],color=(0, 255, 0), thickness=self.rect_th) # Draw Rectangle with the coordinates
                     cv2.putText(source0,pred_class[i], pred_boxes[i][0],  cv2.FONT_HERSHEY_SIMPLEX, self.text_size, (0,255,0),thickness=self.text_th) # Write the prediction class
+
+                # if overlay:
+                #     self.overlay(self.meta,source0)
 
 

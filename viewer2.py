@@ -38,12 +38,16 @@ fps.start()
 
 from nada import Nada
 from yolo import Yolo
+from resnet50 import ResNet50
 
 nada = Nada()
-yolo = Yolo(img_size=256, conf_thres = 0.6) # default is 512 which yeilds about 3.8 fps (i7/940MX), 384 --> 5 fps, 256 --> 7 fps
-# yolo = Yolo(cfg='ultrayolo/cfg/yolov3-tiny.cfg', \
+
+#nn = ResNet50()
+nn = Yolo(img_size=256, conf_thres = 0.5) # default is 512 which yeilds about 3.8 fps (i7/940MX), 384 --> 5 fps, 256 --> 7 fps
+# nn = Yolo(cfg='ultrayolo/cfg/yolov3-tiny.cfg', \
 #                weights='ultrayolo/weights/yolov3-tiny.pt', \
 #                conf_thres = 0.2)
+
 
 
 count = 0
@@ -120,7 +124,7 @@ class ImageProcessor:
             self.count = copy.copy(self._count)
             self.meta = self._meta.copy()
             self.srcid = copy.copy(self._srcid)
-            self.timestamp = self._timestamp
+            self.timestamp = copy.copy(self._timestamp)
 
             # New cycle
             self._timestamp = timestamp
@@ -137,7 +141,8 @@ class ImageProcessor:
                 # already processed it
                 self.meta = []
  
-        self.history.update({self.srcid : (self.count, self.timestamp, self.outimg, self.meta)})
+        if self.meta != []:
+            self.history.update({self.srcid : (self.count, self.timestamp, self.outimg, self.meta)})
         return (self.srcid, self.count, self.timestamp, self.outimg, self.meta)
 
     def update(self):
@@ -161,7 +166,7 @@ class ImageProcessor:
     def list_overlay(self, meta, srcid, count, timestamp):
         self._process.list_overlay(meta, srcid, count, timestamp)
 
-processor = ImageProcessor(yolo)
+processor = ImageProcessor(nn)
 processor.start()
 lastimage = None
 lastsrc = 0
@@ -190,8 +195,10 @@ while running:
 
         #cv2.putText(source,"SRC = " +str(frame.src) + " PRC_F: {:.1f}".format(processor.fps.fps()) + " Frame: " + str(procCount) + " (" + str(procCount - frame.count) +")" ,(0,80),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
 
-        if lastimage is not None:
-            cv2.imshow(f'CAM {lastsrc}', lastimage)
+        for srcid in processor.history.keys():
+            cv2.imshow(f'CAM {srcid}', processor.history[srcid][2])
+        # if lastimage is not None:
+        #     cv2.imshow(f'CAM {lastsrc}', lastimage)
         key = cv2.waitKey(1)
         fps.update()
 
