@@ -43,7 +43,7 @@ from resnet50 import ResNet50
 nada = Nada()
 
 #nn = ResNet50()
-nn = Yolo(img_size=256, conf_thres = 0.5) # default is 512 which yeilds about 3.8 fps (i7/940MX), 384 --> 5 fps, 256 --> 7 fps
+nn = Yolo(img_size=256, conf_thres = 0.67) # default is 512 which yeilds about 3.8 fps (i7/940MX), 384 --> 5 fps, 256 --> 7 fps
 # nn = Yolo(cfg='ultrayolo/cfg/yolov3-tiny.cfg', \
 #                weights='ultrayolo/weights/yolov3-tiny.pt', \
 #                conf_thres = 0.2)
@@ -125,6 +125,7 @@ class ImageProcessor:
 
     def process(self, source, srcid, count, timestamp):
 
+        next_frame = False
         if not self.event.isSet():
 
             #print(f"Triggering on CAM {srcid} - FRAME {count}")
@@ -141,10 +142,12 @@ class ImageProcessor:
             self._count = count
             self._srcid = srcid
 
+            next_frame = True
+
             self.event.set()
 
         if self.srcid in self.history:
-            history = self.history[self.srcid]
+            history = copy.copy(self.history[self.srcid])
 
             if count == history[0] and timestamp == history[1]:
                 # already processed it
@@ -152,7 +155,9 @@ class ImageProcessor:
  
         if self.meta != []:
             self.history.update({self.srcid : (self.count, self.timestamp, self.outimg, self.meta)})
-        return (self.srcid, self.count, self.timestamp, self.outimg, self.meta)
+            self.list_overlay(self.meta, self.srcid, self.count, self.timestamp)
+
+        return next_frame
 
     def update(self):
         print("ImageProcessor STARTED!")
@@ -172,48 +177,75 @@ class ImageProcessor:
 
     def overlay(self, meta, source):
         self._process.overlay(meta, source)
+
+    def overlay_reticle(self, meta, img, scale):
+        self._process.overlay_reticle(meta=meta, img=img, scale=scale)
+
     def list_overlay(self, meta, srcid, count, timestamp):
         self._process.list_overlay(meta, srcid, count, timestamp)
 
 processor = ImageProcessor(nn)
 processor.start()
+
+images = [[None, None, None],
+          [None, None, None],
+          [None, None, None]
+         ]
+scale = 1.25
+
+src_list = [1,2,3,4,5,6,7,8]
+src_in_process = 1
+meta = []
 while running:
     try:
         frame = footage_socket.recv_pyobj()
+        if images[0][0] is None:
+            h,w,d = frame.img.shape
+            z = np.zeros((int(h/scale),int(w/scale),d),dtype='uint8')
+            images = [[z, z, z],
+                      [z, z, z],
+                      [z, z, z]
+                     ]
+        r = (frame.srcid-1) // 3
+        c = (frame.srcid-1) % 3
+        images[r][c] = cv2.resize(frame.img, (int(w/scale),int(h/scale)))
+        if frame.srcid in processor.history:
+            metah = processor.history[frame.srcid][3]
+            if len(metah) > 0:
+                processor.overlay_reticle(meta = metah, img = images[r][c], scale = scale)        
+        
+        r = (src_in_process-1) // 3
+        c = (src_in_process-1) % 3
+        cv2.rectangle(images[r][c], (0,0), (images[r][c].shape[1],images[r][c].shape[0]), (0,0,255), 2)
+        
         #now_string = datetime.datetime.fromtimestamp(datetime.datetime.now().timestamp(),datetime.timezone.utc).isoformat()
 
         # TODO: Pass image to processor and get previous meta
         # If the image processor is busy it will simply ignore this image
         # and return the previous meta
-        (srcid, procCount, timestamp, outimg, meta) = processor.process(frame.img, frame.srcid, frame.count, frame.timestamp)
-        if len(meta) > 0:
-            processor.overlay(meta, outimg)
-            processor.list_overlay(meta, srcid, procCount, timestamp)
+        if frame.srcid == src_list[0]:
+            if processor.process(frame.img, frame.srcid, frame.count, frame.timestamp):
+                old_id = src_list.pop(0)
+                print(f'{old_id} moved to end of line')
+                src_list.append(old_id)
+                src_in_process = old_id
 
-        # cv2.putText(source,"REC_T: " + now_string,(0,20),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
+            # if len(meta) > 0:
+            #     #processor.overlay(meta, outimg)
+            #     processor.list_overlay(meta, srcid, procCount, timestamp)
 
-        # timestamp_string = datetime.datetime.fromtimestamp(frame.timestamp.timestamp(),datetime.timezone.utc).isoformat()
-        # cv2.putText(source,"CAM_T: " + timestamp_string,(0,40),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
+        # for srcid in processor.history.keys():
+        #     cv2.imshow(f'CAM {srcid}', processor.history[srcid][2])
 
-        # cv2.putText(source,"CAM_F: {:.1f}".format(frame.camfps) + " StrFPS : {:.1f}".format(frame.streamfps) + " Frame: " + str(frame.count),(0,60),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
-
-        #cv2.putText(source,"SRC = " +str(frame.src) + " PRC_F: {:.1f}".format(processor.fps.fps()) + " Frame: " + str(procCount) + " (" + str(procCount - frame.count) +")" ,(0,80),cv2.FONT_HERSHEY_PLAIN,1,(0,255,0),1)
-
-        for srcid in processor.history.keys():
-            cv2.imshow(f'CAM {srcid}', processor.history[srcid][2])
-
-        # # function calling 
-        # img_tile = concat_vh([[img1_s, img1_s, img1_s], 
-        #                     [img1_s, img1_s, img1_s], 
-        #                     [img1_s, img1_s, img1_s]]) 
+        # function calling 
+        img_tile = concat_vh(images)
+        cv2.imshow('ALL CAMS', img_tile) 
 
         key = cv2.waitKey(1)
         fps.update()
 
         count += 1
-        # if (0 == count % 10):
-        #     print(f'LOCAL {fps.fps()} : STREAM {frame.streamfps} : DELAY {time.time() - frame.timestamp}')
-
+ 
         if key == 27:
             running = False
 

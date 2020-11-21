@@ -527,7 +527,8 @@ def non_max_suppression(prediction, conf_thres=0.1, iou_thres=0.6, multi_label=T
 
         # Detections matrix nx6 (xyxy, conf, cls)
         if multi_label:
-            i, j = (x[:, 5:] > conf_thres).nonzero().t()
+            # Was: i, j = (x[:, 5:] > conf_thres).nonzero().t()
+            i, j = (x[:, 5:] > conf_thres).nonzero(as_tuple = False).t()
             x = torch.cat((box[i], x[i, j + 5].unsqueeze(1), j.float().unsqueeze(1)), 1)
         else:  # best class only
             conf, j = x[:, 5:].max(1)
@@ -839,12 +840,25 @@ def plot_one_box(x, img, color=None, label=None, line_thickness=None):
         cv2.rectangle(img, c1, c2, color, -1)  # filled
         cv2.putText(img, label, (c1[0], c1[1] - 2), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
 
-def plot_one_tag(xyxy, img, color=None, label=None, line_thickness=None):
+def plot_reticle(x, img, color=None, label=None, line_thickness=None, scale = 1):
+    # Plots one bounding box on image img
+    tl = line_thickness or round(0.001 * (img.shape[0] + img.shape[1]) / 2) + 1  # line thickness
+    color = (0,255,0) #color or [random.randint(0, 255) for _ in range(3)]
+    c1, c2 = (int(x[0]/scale), int(x[1]/scale)), (int(x[2]/scale), int(x[3]/scale))
+    cv2.rectangle(img, c1, c2, color, thickness=tl)
+    if label:
+        tf = max(tl - 1, 1)  # font thickness
+        t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[0]
+        c2 = c1[0] + t_size[0], c1[1] - t_size[1] - 3
+        cv2.rectangle(img, c1, c2, color, -1)  # filled
+        cv2.putText(img, label, (c1[0], c1[1] - 2), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
+
+def plot_one_tag(xyxy, img, color=None, label=None, line_thickness=None, scale = 1):
     # Plots one bounding box on image img
     tl = line_thickness or round(0.001 * (img.shape[0] + img.shape[1]) / 2) + 1  # line thickness
     color = color or [random.randint(0, 255) for _ in range(3)]
-    mx = int((xyxy[0] + xyxy[2])/2)
-    my = int((xyxy[1] + xyxy[3])/2)
+    mx = int(((xyxy[0] + xyxy[2])/2)/scale)
+    my = int(((xyxy[1] + xyxy[3])/2))/scale
     if label:
         tf = max(tl - 1, 1)  # font thickness
         t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[0]

@@ -146,10 +146,10 @@ class Yolo:
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(img.shape[2:], det[:, :4], source0.shape).round()
 
-                # Print results
-                for c in det[:, -1].unique():
-                    n = (det[:, -1] == c).sum()  # detections per class
-                    s += '%g %ss, ' % (n, self.names[int(c)])  # add to string
+                # # Print results
+                # for c in det[:, -1].unique():
+                #     n = (det[:, -1] == c).sum()  # detections per class
+                #     s += '%g %ss, ' % (n, self.names[int(c)])  # add to string
 
                 # Write results
                 for *xyxy, conf, cls in det:
@@ -182,11 +182,15 @@ class Yolo:
     def overlay(self, meta, img):
         for xyxy, label, cls in meta:
             plot_one_box(xyxy, img, label=label, color=self.colors[int(cls)])
-            #plot_one_tag(xyxy, img, label=label, color=self.colors[int(cls)])
+
+    def overlay_reticle(self, meta, img, scale = 1):
+        for xyxy, label, cls in meta:
+            plot_reticle(xyxy, img, label=label, color=self.colors[int(cls)], scale=scale)
 
     def list_overlay(self, meta, srcid, count, timestamp):
         if len(meta) > 0:
             print('------------------------------------')
-            print(f'{len(meta)} objects detected')
+            i = 0
             for x, label, cls in meta:
-                print(f'{timestamp.strftime("%Y-%m-%d %H:%M:%S")} : CAM {srcid} - FRAME {count} : {label} @ {int(x[0]), int(x[1])}')
+                i += 1
+                print(f'{i:2d} : {timestamp.strftime("%Y-%m-%d %H:%M:%S")} : CAM {srcid} - FRAME {count} : {label} @ {int(x[0]), int(x[1])}')

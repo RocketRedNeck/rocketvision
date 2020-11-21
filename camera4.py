@@ -101,6 +101,7 @@ import zmq
 context = zmq.Context()
 socket = context.socket(zmq.PUB)
 socket.connect('tcp://'+args.address+':'+args.port)
+socket.set_hwm(10)
 
 stream = True
 
@@ -134,10 +135,10 @@ while running:
                 #_, frame.jpg = cv2.imencode('.jpeg', img)
                 socket.send_pyobj(frame)
 
-            try:    
-                cv2.imshow(f'Camera {frame.srcid}', frame.img)
-            except Exception as e:
-                print(f'[WARNING] : {repr(e)}')            
+            # try:    
+            #     cv2.imshow(f'Camera {frame.srcid}', frame.img)
+            # except Exception as e:
+            #     print(f'[WARNING] : {repr(e)}')            
             fps.update()
             frame.streamfps = fps.fps()
                 
