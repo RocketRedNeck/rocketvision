@@ -1,14 +1,15 @@
 
+import argparse
 import copy
 import cv2
-import zmq
-import numpy as np
 import datetime
-
+import numpy as np
+import operator
 import sys
+import zmq
+
 
 # Create arg parser
-import argparse
 parser = argparse.ArgumentParser()
 
 # Add OPTIONAL IP Address argument
@@ -27,6 +28,7 @@ context = zmq.Context()
 footage_socket = context.socket(zmq.SUB)
 footage_socket.bind('tcp://'+args['address']+':'+args['port'])
 footage_socket.setsockopt_string(zmq.SUBSCRIBE, '')
+footage_socket.set_hwm(1)
 
 footage_socket.RCVTIMEO = 1000 # in milliseconds
 count = 0
@@ -193,8 +195,7 @@ images = [[None, None, None],
          ]
 scale = 1.25
 
-src_list = [1,2,3,4,5,6,7,8]
-src_in_process = 1
+src_dict = {}
 meta = []
 while running:
     try:
@@ -213,29 +214,23 @@ while running:
             metah = processor.history[frame.srcid][3]
             if len(metah) > 0:
                 processor.overlay_reticle(meta = metah, img = images[r][c], scale = scale)        
-        
-        r = (src_in_process-1) // 3
-        c = (src_in_process-1) % 3
-        cv2.rectangle(images[r][c], (0,0), (images[r][c].shape[1],images[r][c].shape[0]), (0,0,255), 2)
-        
-        #now_string = datetime.datetime.fromtimestamp(datetime.datetime.now().timestamp(),datetime.timezone.utc).isoformat()
-
-        # TODO: Pass image to processor and get previous meta
+                
         # If the image processor is busy it will simply ignore this image
         # and return the previous meta
-        if frame.srcid == src_list[0]:
+        # The oldest stream is processed first, ensuring nothing is stale
+        # The average latency will be time to scan all channels
+        if frame.srcid not in src_dict:
+            src_dict.update({frame.srcid:0.0})
+
+        src_list = sorted(src_dict.items(), key=operator.itemgetter(1), reverse=False)
+
+        if frame.srcid == src_list[0][0]:
             if processor.process(frame.img, frame.srcid, frame.count, frame.timestamp):
-                old_id = src_list.pop(0)
-                print(f'{old_id} moved to end of line')
-                src_list.append(old_id)
-                src_in_process = old_id
-
-            # if len(meta) > 0:
-            #     #processor.overlay(meta, outimg)
-            #     processor.list_overlay(meta, srcid, procCount, timestamp)
-
-        # for srcid in processor.history.keys():
-        #     cv2.imshow(f'CAM {srcid}', processor.history[srcid][2])
+                print(f'{frame.srcid} : {datetime.datetime.now().timestamp() - src_dict[frame.srcid]}')
+                src_dict.update({frame.srcid:frame.timestamp.timestamp()})
+                r = (frame.srcid-1) // 3
+                c = (frame.srcid-1) % 3
+                cv2.rectangle(images[r][c], (0,0), (images[r][c].shape[1],images[r][c].shape[0]), (0,0,255), 2)
 
         # function calling 
         img_tile = concat_vh(images)
