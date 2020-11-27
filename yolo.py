@@ -183,9 +183,9 @@ class Yolo:
         for xyxy, label, cls in meta:
             plot_one_box(xyxy, img, label=label, color=self.colors[int(cls)])
 
-    def overlay_reticle(self, meta, img, scale = 1):
+    def overlay_reticle(self, meta, img, scale = 1, timestamp = None):
         for xyxy, label, cls in meta:
-            plot_reticle(xyxy, img, label=label, color=self.colors[int(cls)], scale=scale)
+            plot_reticle(xyxy, img, timestamp = timestamp, label=label, color=self.colors[int(cls)], scale=scale)
 
     def list_overlay(self, meta, srcid, count, timestamp):
         if len(meta) > 0:

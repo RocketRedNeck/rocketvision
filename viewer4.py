@@ -45,11 +45,16 @@ from resnet50 import ResNet50
 nada = Nada()
 
 #nn = ResNet50()
-nn = Yolo(img_size=256, conf_thres = 0.67) # default is 512 which yeilds about 3.8 fps (i7/940MX), 384 --> 5 fps, 256 --> 7 fps
+nn = Yolo(img_size=256, conf_thres = 0.60) # default is 512 which yeilds about 3.8 fps (i7/940MX), 384 --> 5 fps, 256 --> 7 fps
+# nn2 = Yolo(img_size=256, conf_thres = 0.60) # default is 512 which yeilds about 3.8 fps (i7/940MX), 384 --> 5 fps, 256 --> 7 fps
+
 # nn = Yolo(cfg='ultrayolo/cfg/yolov3-tiny.cfg', \
 #                weights='ultrayolo/weights/yolov3-tiny.pt', \
 #                conf_thres = 0.2)
 
+# nn2 = Yolo(cfg='ultrayolo/cfg/yolov3-tiny.cfg', \
+#                weights='ultrayolo/weights/yolov3-tiny.pt', \
+#                conf_thres = 0.2)
 
 
 count = 0
@@ -180,14 +185,15 @@ class ImageProcessor:
     def overlay(self, meta, source):
         self._process.overlay(meta, source)
 
-    def overlay_reticle(self, meta, img, scale):
-        self._process.overlay_reticle(meta=meta, img=img, scale=scale)
+    def overlay_reticle(self, meta, img, scale, timestamp):
+        self._process.overlay_reticle(meta=meta, img=img, scale=scale, timestamp = timestamp)
 
     def list_overlay(self, meta, srcid, count, timestamp):
         self._process.list_overlay(meta, srcid, count, timestamp)
 
-processor = ImageProcessor(nn)
-processor.start()
+processor = [ImageProcessor(nn)] #, ImageProcessor(nn2)]
+for p in processor:
+    p.start()
 
 images = [[None, None, None],
           [None, None, None],
@@ -195,7 +201,7 @@ images = [[None, None, None],
          ]
 scale = 1.25
 
-src_dict = {}
+src_dict = [{},{}]
 meta = []
 while running:
     try:
@@ -209,28 +215,33 @@ while running:
                      ]
         r = (frame.srcid-1) // 3
         c = (frame.srcid-1) % 3
-        images[r][c] = cv2.resize(frame.img, (int(w/scale),int(h/scale)))
-        if frame.srcid in processor.history:
-            metah = processor.history[frame.srcid][3]
-            if len(metah) > 0:
-                processor.overlay_reticle(meta = metah, img = images[r][c], scale = scale)        
+
+        src_idx = 0 #frame.srcid & 1
+        
+        if w is not None and w > 0:
+            images[r][c] = cv2.resize(frame.img, (int(w/scale),int(h/scale)))
+            if frame.srcid in processor[src_idx].history:
+                metah = processor[src_idx].history[frame.srcid][3]
+                timestamp = processor[src_idx].history[frame.srcid][1]
+                if len(metah) > 0:
+                    processor[src_idx].overlay_reticle(meta = metah, img = images[r][c], scale = scale, timestamp = timestamp)        
                 
-        # If the image processor is busy it will simply ignore this image
-        # and return the previous meta
-        # The oldest stream is processed first, ensuring nothing is stale
-        # The average latency will be time to scan all channels
-        if frame.srcid not in src_dict:
-            src_dict.update({frame.srcid:0.0})
+            # If the image processor is busy it will simply ignore this image
+            # and return the previous meta
+            # The oldest stream is processed first, ensuring nothing is stale
+            # The average latency will be time to scan all channels
+            if frame.srcid not in src_dict[src_idx]:
+                src_dict[src_idx].update({frame.srcid:0.0})
 
-        src_list = sorted(src_dict.items(), key=operator.itemgetter(1), reverse=False)
+            src_list = sorted(src_dict[src_idx].items(), key=operator.itemgetter(1), reverse=False)
 
-        if frame.srcid == src_list[0][0]:
-            if processor.process(frame.img, frame.srcid, frame.count, frame.timestamp):
-                print(f'{frame.srcid} : {datetime.datetime.now().timestamp() - src_dict[frame.srcid]}')
-                src_dict.update({frame.srcid:frame.timestamp.timestamp()})
-                r = (frame.srcid-1) // 3
-                c = (frame.srcid-1) % 3
-                cv2.rectangle(images[r][c], (0,0), (images[r][c].shape[1],images[r][c].shape[0]), (0,0,255), 2)
+            if frame.srcid == src_list[0][0]:
+                if processor[src_idx].process(frame.img, frame.srcid, frame.count, frame.timestamp):
+                    print(f'Pipe {src_idx} : {frame.srcid} : {datetime.datetime.now().timestamp() - src_dict[src_idx][frame.srcid]}')
+                    src_dict[src_idx].update({frame.srcid:frame.timestamp.timestamp()})
+                    r = (frame.srcid-1) // 3
+                    c = (frame.srcid-1) % 3
+                    cv2.rectangle(images[r][c], (0,0), (images[r][c].shape[1],images[r][c].shape[0]), (0,0,255), 2)
 
         # function calling 
         img_tile = concat_vh(images)

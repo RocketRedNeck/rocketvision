@@ -40,7 +40,7 @@ class Frame:
 class ImageCapture:
     def __init__(self, src = 0):
         self.src = src
-        self.cam = cv2.VideoCapture(f'rtsp://admin:beaubeau@192.168.0.15:554//h264Preview_0{self.src}_sub')
+        self.cam = cv2.VideoCapture(f'rtsp://admin:beau1191!@192.168.0.15:554//h264Preview_0{self.src}_sub')
         self.img = None
         self.count = 0
         self.fps = Rate()
@@ -108,6 +108,7 @@ class ImageCapture:
 
 
 def process(address, port, n):
+    print(f'PROCESS = {address}, {port}, {n}')
     with ImageCapture(n) as cam:
         time.sleep(5)
         cam.start()
@@ -159,14 +160,30 @@ import multiprocessing as mp
 
 if __name__ == '__main__':
     mp.set_start_method('spawn')
-    p = []
-    for n in range(1,9):
-        p.append(mp.Process(target=process, name=f'cam{n}', args=(args.address,args.port,n)))
-        p[-1].start()
+    with mp.Pool(processes = 8) as pool:
 
-    while(True):
-        print('----------------------------')
-        for px in p:
-            print(f'{px.name} is {"alive" if px.is_alive() else "DEAD"}')
-        time.sleep(1.0)
+        aso = []
+        for n in range(1,9):
+            a = (args.address,args.port,n)
+            print(a)
+            aso.append(pool.apply_async(func=process, args=a))
+
+        while (True):
+            # for p in aso:
+            #     print(p.ready())
+
+            print(datetime.datetime.now().strftime("%X"))
+            time.sleep(1.0)
+
+
+    # p = []
+    # for n in range(1,9):
+    #     p.append(mp.Process(target=process, name=f'cam{n}', args=(args.address,args.port,n)))
+    #     p[-1].start()
+
+    # while(True):
+    #     print('----------------------------')
+    #     for px in p:
+    #         print(f'{px.name} is {"alive" if px.is_alive() else "DEAD"}')
+    #     time.sleep(1.0)
     
