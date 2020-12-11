@@ -52,6 +52,7 @@ class ImageCapture:
         return self
     
     def __exit__(self,exc_type, exc_val, exc_tb):
+        print(f'\n\n\n\nReleasing Camera {self.src}')
         self.cam.release()
         
     def start(self, wait = True, timeout = 5.0):        
@@ -143,7 +144,7 @@ def process(address, port, n):
 
                     fps.update()
                     frame.streamfps = fps.fps()
-                        
+
             key = cv2.waitKey(1)
             
             if key == 27:
