@@ -32,7 +32,7 @@ import cv2
 class ImageCapture:
     def __init__(self, src = 0):
         self.src = src
-        self.cam = cv2.VideoCapture(f'rtsp://admin:beaubeau@192.168.0.15:554//h264Preview_0{self.src}_sub')
+        self.cam = cv2.VideoCapture(f'rtsp://admin:beau1191!@192.168.0.15:554//h264Preview_0{self.src}_sub')
         self.img = None
         self.count = 0
         self.fps = Rate()

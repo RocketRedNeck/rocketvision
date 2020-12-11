@@ -13,7 +13,7 @@ import zmq
 parser = argparse.ArgumentParser()
 
 # Add OPTIONAL IP Address argument
-# Specify with "py rocketvision.py -ip <viewer address> -p <viewer port> "
+# Specify with "py camera5.py -ip <viewer address> -p <viewer port> "
 # viewer address = localhost (default)
 # viewer port = 5555 (default)
 parser.add_argument('--address', required=False, default='localhost', 
@@ -109,7 +109,7 @@ class ImageCapture:
 
 def process(address, port, n):
     print(f'PROCESS = {address}, {port}, {n}')
-    with ImageCapture(n) as cam:
+    with ImageCapture(int(n)) as cam:
         time.sleep(5)
         cam.start()
 
@@ -139,13 +139,8 @@ def process(address, port, n):
                 if (frame.count != lastframecount):
                     lastframecount = frame.count
                     if stream:
-                        #_, frame.jpg = cv2.imencode('.jpeg', img)
                         socket.send_pyobj(frame)
 
-                    # try:    
-                    #     cv2.imshow(f'Camera {frame.srcid}', frame.img)
-                    # except Exception as e:
-                    #     print(f'[WARNING] : {repr(e)}')            
                     fps.update()
                     frame.streamfps = fps.fps()
                         
@@ -156,24 +151,26 @@ def process(address, port, n):
             elif key == ord('s'):
                 stream = not stream
     
-import multiprocessing as mp
+# import multiprocessing as mp
 
 if __name__ == '__main__':
-    mp.set_start_method('spawn')
-    with mp.Pool(processes = 8) as pool:
+    process(args.address, args.port, args.n)
 
-        aso = []
-        for n in range(1,9):
-            a = (args.address,args.port,n)
-            print(a)
-            aso.append(pool.apply_async(func=process, args=a))
+    # mp.set_start_method('spawn')
+    # with mp.Pool(processes = 8) as pool:
 
-        while (True):
-            # for p in aso:
-            #     print(p.ready())
+    #     aso = []
+    #     for n in range(1,9):
+    #         a = (args.address,args.port,n)
+    #         print(a)
+    #         aso.append(pool.apply_async(func=process, args=a))
 
-            print(datetime.datetime.now().strftime("%X"))
-            time.sleep(1.0)
+    #     while (True):
+    #         # for p in aso:
+    #         #     print(p.ready())
+
+    #         print(datetime.datetime.now().strftime("%X"))
+    #         time.sleep(1.0)
 
 
     # p = []
