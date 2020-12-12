@@ -40,7 +40,11 @@ class Frame:
 class ImageCapture:
     def __init__(self, src = 0):
         self.src = src
+        # Example: rtsp://admin:beau1191!@192.168.0.15:554//h264Preview_01_sub
         self.cam = cv2.VideoCapture(f'rtsp://admin:beau1191!@192.168.0.15:554//h264Preview_0{self.src}_sub')
+        # campipe = f'rtspsrc location="rtsp://admin:beau1191!@192.168.0.15:554//h264Preview_0{self.src}_sub" ! rtph264depay ! h264parse ! avdec_h264 ! video/x-raw, format=(string)BGRx! videoconvert ! appsink'
+        # self.cam = cv2.VideoCapture(campipe,cv2.CAP_GSTREAMER)
+
         self.img = None
         self.count = 0
         self.fps = Rate()
@@ -128,13 +132,18 @@ def process(address, port, n):
 
         lastframecount = 0
 
-
         frame = Frame()
         frame.srcid = cam.src
+
+        next_time = time.perf_counter() + 1.0
 
         while running:
             frame.count, frame.img, frame.timestamp = cam.read()
             frame.camfps = cam.fps.fps()
+
+            if time.perf_counter() > next_time:
+                next_time += 1.0
+                print(f'FPS = {frame.camfps}')
             
             if (frame.count != None):
                 if (frame.count != lastframecount):

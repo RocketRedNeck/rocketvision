@@ -845,7 +845,7 @@ def plot_reticle(x, img, color=None, label=None, line_thickness=None, scale = 1,
     # Plots one bounding box on image img
     tl = line_thickness or round(0.001 * (img.shape[0] + img.shape[1]) / 2) + 1  # line thickness
     color = (0,255,0) #color or [random.randint(0, 255) for _ in range(3)]
-    c1, c2 = (int(x[0]/scale), int(x[1]/scale)), (int(x[2]/scale), int(x[3]/scale))
+    c1, c2 = (int(x[0]*scale), int(x[1]*scale)), (int(x[2]*scale), int(x[3]*scale))
     cv2.rectangle(img, c1, c2, color, thickness=tl)
     cv2.circle(img, ((c1[0]+c2[0])//2,(c1[1]+c2[1])//2),10,color)
     if label:
@@ -864,8 +864,8 @@ def plot_one_tag(xyxy, img, color=None, label=None, line_thickness=None, scale =
     # Plots one bounding box on image img
     tl = line_thickness or round(0.001 * (img.shape[0] + img.shape[1]) / 2) + 1  # line thickness
     color = color or [random.randint(0, 255) for _ in range(3)]
-    mx = int(((xyxy[0] + xyxy[2])/2)/scale)
-    my = int(((xyxy[1] + xyxy[3])/2))/scale
+    mx = int(((xyxy[0] + xyxy[2])/2)*scale)
+    my = int(((xyxy[1] + xyxy[3])/2))*scale
     if label:
         tf = max(tl - 1, 1)  # font thickness
         t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[0]
