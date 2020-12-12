@@ -2,6 +2,8 @@
 import argparse
 import cv2
 import datetime
+import json
+import os
 import time
 from threading import Thread
 from threading import Event
@@ -28,6 +30,17 @@ help='Stream Number')
 args = parser.parse_args()
 print(args)
 
+FILE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def load_config_file(file):
+    with open(os.path.join(FILE_DIR, file)) as path:
+        return json.load(path)
+
+config = load_config_file("hare.json")['hare_options']
+rtsp_user = config['rtsp_user']
+password = config['password']
+rtsp_ip = config['rtsp_ip']
+
 class Frame:
     def __init__(self):
         self.timestamp = 0
@@ -40,10 +53,7 @@ class Frame:
 class ImageCapture:
     def __init__(self, src = 0):
         self.src = src
-        # Example: rtsp://admin:beau1191!@192.168.0.15:554//h264Preview_01_sub
-        self.cam = cv2.VideoCapture(f'rtsp://admin:beau1191!@192.168.0.15:554//h264Preview_0{self.src}_sub')
-        # campipe = f'rtspsrc location="rtsp://admin:beau1191!@192.168.0.15:554//h264Preview_0{self.src}_sub" ! rtph264depay ! h264parse ! avdec_h264 ! video/x-raw, format=(string)BGRx! videoconvert ! appsink'
-        # self.cam = cv2.VideoCapture(campipe,cv2.CAP_GSTREAMER)
+        self.cam = cv2.VideoCapture(f'rtsp://{rtsp_user}:{password}@{rtsp_ip}//h264Preview_0{self.src}_sub')
 
         self.img = None
         self.count = 0
@@ -165,32 +175,4 @@ def process(address, port, n):
 
 if __name__ == '__main__':
     process(args.address, args.port, args.n)
-
-    # mp.set_start_method('spawn')
-    # with mp.Pool(processes = 8) as pool:
-
-    #     aso = []
-    #     for n in range(1,9):
-    #         a = (args.address,args.port,n)
-    #         print(a)
-    #         aso.append(pool.apply_async(func=process, args=a))
-
-    #     while (True):
-    #         # for p in aso:
-    #         #     print(p.ready())
-
-    #         print(datetime.datetime.now().strftime("%X"))
-    #         time.sleep(1.0)
-
-
-    # p = []
-    # for n in range(1,9):
-    #     p.append(mp.Process(target=process, name=f'cam{n}', args=(args.address,args.port,n)))
-    #     p[-1].start()
-
-    # while(True):
-    #     print('----------------------------')
-    #     for px in p:
-    #         print(f'{px.name} is {"alive" if px.is_alive() else "DEAD"}')
-    #     time.sleep(1.0)
     

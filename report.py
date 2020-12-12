@@ -1,8 +1,20 @@
+import json
+import os
 import smtplib, ssl
 
-sender_email = "hare.of.caerbannog@gmail.com"
-receiver_email = ["5209777127@vtext.com", "kesselmt@gmail.com"]
-password = "beau1191!"
+FILE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def load_config_file(file):
+    with open(os.path.join(FILE_DIR, file)) as path:
+        return json.load(path)
+
+
+
+config = load_config_file("hare.json")['hare_options']
+
+sender_email = config['email_source']
+receiver_email = config['email_destination']
+password = config['password']
 
 message = """\
 Subject: Front Door Alert

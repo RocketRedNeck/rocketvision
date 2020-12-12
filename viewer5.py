@@ -217,6 +217,7 @@ scale = 0.5
 
 src_dict = [{},{},{},{},{},{},{},{}]
 meta = []
+fps_time = time.perf_counter() + 1.0
 while running:
     try:
         frame = footage_socket.recv_pyobj()
@@ -251,7 +252,7 @@ while running:
 
             # if frame.srcid == src_list[0][0]:
             if processor[src_idx].process(frame.img, frame.srcid, frame.count, frame.timestamp):
-                print(f'Pipe {src_idx} : {frame.srcid} : {datetime.datetime.now().timestamp() - src_dict[src_idx][frame.srcid]}')
+                print(f'Pipe {src_idx} : {frame.srcid} : {datetime.datetime.now().timestamp() - src_dict[src_idx][frame.srcid]:.3f}')
                 src_dict[src_idx].update({frame.srcid:frame.timestamp.timestamp()})
                 r = (frame.srcid-1) // 3
                 c = (frame.srcid-1) % 3
@@ -265,6 +266,10 @@ while running:
         fps.update()
 
         count += 1
+
+        if (time.perf_counter() > fps_time):
+            fps_time += 1.0
+            print(f'FPS = {fps.fps()}')
  
         if key == 27:
             running = False
