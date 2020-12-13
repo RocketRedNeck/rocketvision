@@ -40,6 +40,8 @@ config = load_config_file("hare.json")['hare_options']
 rtsp_user = config['rtsp_user']
 password = config['password']
 rtsp_ip = config['rtsp_ip']
+zmq_ip = config['zmq_ip']
+zmq_port = config['zmq_port']
 
 class Frame:
     def __init__(self):
@@ -174,5 +176,8 @@ def process(address, port, n):
 # import multiprocessing as mp
 
 if __name__ == '__main__':
-    process(args.address, args.port, args.n)
+    try:
+        process(zmq_ip, zmq_port, args.n)
+    except:
+        pass
     

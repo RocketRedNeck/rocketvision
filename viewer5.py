@@ -3,10 +3,24 @@ import argparse
 import copy
 import cv2
 import datetime
+import json
 import numpy as np
 import operator
+import os
+import psutil
+import pynvml # from pip install nvidia-ml-py
+import signal
+from subprocess import Popen, PIPE
 import sys
+from threading import Thread, Event
+import time
+import torch
 import zmq
+
+from rocketvision import Rate
+from yolo import Yolo
+#from resnet50 import ResNet50
+
 
 
 # Create arg parser
@@ -24,9 +38,19 @@ help='Port for Receiving')
 # Parse the args
 args = vars(parser.parse_args())
 
+FILE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def load_config_file(file):
+    with open(os.path.join(FILE_DIR, file)) as path:
+        return json.load(path)
+
+config = load_config_file("hare.json")['hare_options']
+camera_list = config['camera_list']
+zmq_port = config['zmq_port']
+
 context = zmq.Context()
 footage_socket = context.socket(zmq.SUB)
-footage_socket.bind('tcp://'+args['address']+':'+args['port'])
+footage_socket.bind('tcp://'+'*'+':'+zmq_port)
 footage_socket.setsockopt_string(zmq.SUBSCRIBE, '')
 footage_socket.set_hwm(1)
 
@@ -34,15 +58,13 @@ footage_socket.RCVTIMEO = 1000 # in milliseconds
 count = 0
 running = True
 
-from rocketvision import Rate
 fps = Rate()
 fps.start()
 
-from nada import Nada
-from yolo import Yolo
-from resnet50 import ResNet50
+torch.cuda.empty_cache()
+pynvml.nvmlInit()
+gpuObj = pynvml.nvmlDeviceGetHandleByIndex(0)
 
-nada = Nada()
 
 #nn = ResNet50()
 nn =  [ Yolo(img_size=256, conf_thres = 0.60) # default is 512 which yeilds about 3.8 fps (i7/940MX), 384 --> 5 fps, 256 --> 7 fps
@@ -82,10 +104,6 @@ class Frame:
         self.camfps = 0
         self.streamfps = 0
         self.srcid = 0
-
-from threading import Thread
-from threading import Event
-import time
 
 class ImageProcessor:
     def __init__(self, process):
@@ -213,9 +231,22 @@ images = [[None, None, None],
           [None, None, None],
           [None, None, None]
          ]
-scale = 0.5
+scale = 0.66
 
-src_dict = [{},{},{},{},{},{},{},{}]
+camera_processes = []
+for i in camera_list:
+    p = Popen(["python",
+               "camera5.py", "--n", f"{i}"],
+                stdin=PIPE,
+                stdout=PIPE,
+                stderr=PIPE,
+                universal_newlines=True,
+                bufsize=0
+                ) # Windows only: creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
+    camera_processes.append(p)
+
+
+latency_dict = [{},{},{},{},{},{},{},{}]
 meta = []
 fps_time = time.perf_counter() + 1.0
 while running:
@@ -239,24 +270,36 @@ while running:
                 metah = processor[src_idx].history[frame.srcid][3]
                 timestamp = processor[src_idx].history[frame.srcid][1]
                 if len(metah) > 0:
-                    processor[src_idx].overlay_reticle(meta = metah, img = images[r][c], scale = scale, timestamp = timestamp)        
-                
+                    if datetime.datetime.now().timestamp() - timestamp.timestamp() < 3.0:
+                        processor[src_idx].overlay_reticle(meta = metah, img = images[r][c], scale = scale, timestamp = timestamp)        
+
             # If the image processor is busy it will simply ignore this image
             # and return the previous meta
             # The oldest stream is processed first, ensuring nothing is stale
             # The average latency will be time to scan all channels
-            if frame.srcid not in src_dict[src_idx]:
-                src_dict[src_idx].update({frame.srcid:0.0})
+            if frame.srcid not in latency_dict[src_idx]:
+                latency_dict[src_idx].update({frame.srcid:0.0})
 
-            # src_list = sorted(src_dict[src_idx].items(), key=operator.itemgetter(1), reverse=False)
+            # src_list = sorted(latency_dict[src_idx].items(), key=operator.itemgetter(1), reverse=False)
 
             # if frame.srcid == src_list[0][0]:
             if processor[src_idx].process(frame.img, frame.srcid, frame.count, frame.timestamp):
-                print(f'Pipe {src_idx} : {frame.srcid} : {datetime.datetime.now().timestamp() - src_dict[src_idx][frame.srcid]:.3f}')
-                src_dict[src_idx].update({frame.srcid:frame.timestamp.timestamp()})
+                latency_string = f'{datetime.datetime.now().timestamp() - latency_dict[src_idx][frame.srcid]:.3f}'
+                latency_dict[src_idx].update({frame.srcid:frame.timestamp.timestamp()})
                 r = (frame.srcid-1) // 3
                 c = (frame.srcid-1) % 3
-                cv2.rectangle(images[r][c], (0,0), (images[r][c].shape[1],images[r][c].shape[0]), (0,0,255), 2)
+                cv2.putText(images[r][c],
+                            latency_string,
+                            (int(225*scale),int(340*scale)),
+                            cv2.FONT_HERSHEY_DUPLEX,
+                            scale,
+                            (0,0,255),
+                            int(1*scale))          
+                cv2.rectangle(images[r][c],
+                              (0,0),
+                              (images[r][c].shape[1],images[r][c].shape[0]), 
+                              (0,0,255), 
+                              2)
 
         # function calling 
         img_tile = concat_vh(images)
@@ -269,8 +312,59 @@ while running:
 
         if (time.perf_counter() > fps_time):
             fps_time += 1.0
-            print(f'FPS = {fps.fps()}')
- 
+            font_scale = 1.75
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            images[2][2] = copy.copy(z)
+            cv2.putText(images[2][2],
+                        f'FPS  = {fps.fps():.1f}',
+                        (int(0*scale),int(30*scale)),
+                        font,
+                        scale / font_scale,
+                        (0,255,0),
+                        int(1*scale))
+
+            percs = psutil.cpu_percent(percpu=True)
+            cv2.putText(images[2][2],
+                        f'CPU % = {percs}',
+                        (int(0*scale),int(60*scale)),
+                        font,
+                        scale / font_scale,
+                        (0,255,0),
+                        int(1*scale))
+
+            temps = psutil.sensors_temperatures()
+            package_temp = temps['coretemp'][0].current
+            package_limit = temps['coretemp'][0].high
+            cv2.putText(images[2][2],
+                        f'CPU T = {package_temp:.1f} C',
+                        (int(0*scale),int(90*scale)),
+                        font,
+                        scale / font_scale,
+                        (0,255,0) if package_temp < package_limit else (0,255,255),
+                        int(1*scale))
+
+            gpu_percs = pynvml.nvmlDeviceGetUtilizationRates(gpuObj)
+            gpu_mem   = pynvml.nvmlDeviceGetMemoryInfo(gpuObj)
+            cv2.putText(images[2][2],
+                        f'GPU % = Time : {gpu_percs.gpu}  Mem : {100*gpu_mem.used/gpu_mem.total:.0f}',
+                        (int(0*scale),int(120*scale)),
+                        font,
+                        scale / font_scale,
+                        (0,255,0),
+                        int(1*scale))
+
+
+            gpu_temp = pynvml.nvmlDeviceGetTemperature(gpuObj, pynvml.NVML_TEMPERATURE_GPU)
+            package_limit = 93                        
+            cv2.putText(images[2][2],
+                        f'GPU T = {gpu_temp:.1f} C',
+                        (int(0*scale),int(150*scale)),
+                        font,
+                        scale / font_scale,
+                        (0,255,0) if gpu_temp < package_limit else (0,255,255),
+                        int(1*scale))
+
+
         if key == 27:
             running = False
 
@@ -281,3 +375,6 @@ while running:
         print("Waiting... ", count)
 
 cv2.destroyAllWindows()
+pynvml.nvmlShutdown()
+for p in camera_processes:
+    p.send_signal(signal.SIGINT)
