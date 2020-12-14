@@ -236,7 +236,7 @@ scale = 0.66
 camera_processes = []
 for i in camera_list:
     p = Popen(["python",
-               "camera5.py", "--n", f"{i}"],
+               "camera6.py", "--n", f"{i}"],
                 stdin=PIPE,
                 stdout=PIPE,
                 stderr=PIPE,
@@ -392,6 +392,9 @@ while running:
     except zmq.error.Again:
         count +=1
         print("Waiting... ", count)
+    except Exception as e:
+        print(e)
+        break
 
 cv2.destroyAllWindows()
 pynvml.nvmlShutdown()
