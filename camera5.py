@@ -57,19 +57,27 @@ class ImageCapture:
         self.src = src
         self.cam = cv2.VideoCapture(f'rtsp://{rtsp_user}:{password}@{rtsp_ip}//h264Preview_0{self.src}_sub')
 
+        if self.cam.isOpened() == False:
+            print("\n\nVideoCapture Failed!\n\n")
+        else:
+            print('\n\nVideoCapture SUCCESS!\n\n')
         self.img = None
         self.count = 0
         self.fps = Rate()
         self.timestamp = 0
         self.event = Event()
         self.running = False
+        self.stopped = False
     
     def __enter__(self):
         return self
     
     def __exit__(self,exc_type, exc_val, exc_tb):
         print(f'\n\n\n\nReleasing Camera {self.src}')
-        self.cam.release()
+        try:
+            self.cam.release()
+        except:
+            pass
         
     def start(self, wait = True, timeout = 5.0):        
         # start the thread to read frames from the video stream
@@ -87,7 +95,7 @@ class ImageCapture:
 
         return self
 
-    def stop(self, wait = True, timeout = 5.0):
+    def stop(self, timeout = 5.0):
         self.running = False
         start = time.time()
         while not self.stopped and ((time.time() - start) <= timeout):
@@ -111,23 +119,29 @@ class ImageCapture:
         self.fps.start()
         self.stopped = False
         self.running = True
-        while (self.running):
+        while self.running:
             ret,self.img = self.cam.read()
             self.timestamp = datetime.datetime.now()
-            if (ret):
+            if ret:
                 self.count += 1
                 self.fps.update()
                 self.event.set()
-                
 
         self.stopped = True
         print("ImageCapture STOPPED")    
 
 
-def process(address, port, n):
-    print(f'PROCESS = {address}, {port}, {n}')
-    with ImageCapture(int(n)) as cam:
-        time.sleep(5)
+def process(address, port, cam_num, verbose=False):
+    """Image processing loop
+
+    Args:
+        address (string): ip address to send stream frames
+        port (string): ip port to send stream frames
+        cam_num (integer): camera number to stream
+        verbose (bool, optional): [description]. Defaults to False.
+    """
+    print(f'PROCESS = {address}, {port}, {cam_num}')
+    with ImageCapture(int(cam_num)) as cam:
         cam.start()
 
         context = zmq.Context()
@@ -155,10 +169,15 @@ def process(address, port, n):
 
             if time.perf_counter() > next_time:
                 next_time += 1.0
-                print(f'FPS = {frame.camfps}')
-            
-            if (frame.count != None):
-                if (frame.count != lastframecount):
+                if verbose:
+                    print(f'FPS = {frame.camfps}')
+
+            if verbose and frame.img is not None:
+                cv2.imshow(f'CAM {frame.srcid}', frame.img)
+                cv2.waitKey(1)
+
+            if frame.count is not None:
+                if frame.count != lastframecount:
                     lastframecount = frame.count
                     if stream:
                         socket.send_pyobj(frame)
@@ -166,18 +185,8 @@ def process(address, port, n):
                     fps.update()
                     frame.streamfps = fps.fps()
 
-            key = cv2.waitKey(1)
-            
-            if key == 27:
-                running = False
-            elif key == ord('s'):
-                stream = not stream
-    
-# import multiprocessing as mp
-
 if __name__ == '__main__':
     try:
-        process(zmq_ip, zmq_port, args.n)
-    except:
-        pass
-    
+        process(zmq_ip, zmq_port, args.n, verbose=False)
+    except: # Exception as e:
+        pass #print(e)

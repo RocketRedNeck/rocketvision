@@ -52,7 +52,7 @@ context = zmq.Context()
 footage_socket = context.socket(zmq.SUB)
 footage_socket.bind('tcp://'+'*'+':'+zmq_port)
 footage_socket.setsockopt_string(zmq.SUBSCRIBE, '')
-footage_socket.set_hwm(1)
+footage_socket.set_hwm(2)
 
 footage_socket.RCVTIMEO = 1000 # in milliseconds
 count = 0
@@ -235,8 +235,23 @@ scale = 0.66
 
 camera_processes = []
 for i in camera_list:
-    p = Popen(["python",
-               "camera5.py", "--n", f"{i}"],
+    gstcmd = ['gst-launch-1.0', 
+              'rtspsrc',
+              f'location="rtsp://SecurityBunny:WhiteRabbit8@192.168.0.15:554//h264Preview_0{i}_sub"', 
+              'protocols=GST_RTSP_LOWER_TRANS_TCP',
+              'latency=0',
+              '!',
+              'rtph264depay',
+              '!',
+              'h264parse',
+              '!',
+              'decodebin',
+              '!',
+              'autovideoconvert'
+              '!',
+              'autovideosink']
+
+    p = Popen(gstcmd,
                 stdin=PIPE,
                 stdout=PIPE,
                 stderr=PIPE,
