@@ -231,7 +231,7 @@ images = [[None, None, None],
           [None, None, None],
           [None, None, None]
          ]
-scale = 0.66
+scale = 0.6
 
 camera_processes = []
 for i in camera_list:

@@ -79,10 +79,7 @@ class mainStreamClass:
     def startMain(self):
 
         #set  queue size
-        self.cam_queue = mp.Queue(maxsize=100)
-
-        #get all cams
-        time.sleep(3)
+        self.cam_queue = mp.Queue(maxsize=7)
 
         self.stopbit = mp.Event()
         self.camProcess = vs.StreamCapture(self.camlink,
