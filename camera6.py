@@ -104,12 +104,14 @@ class mainStreamClass:
         next_time = time.perf_counter() + 1.0
 
         try:
+            self.fps.start()
             while True:
 
                 if not self.cam_queue.empty():
                     # print('Got frame')
                     cmd, val = self.cam_queue.get()
                     self.timestamp = datetime.datetime.now()
+                    self.fps.update()
 
                     # if cmd == vs.StreamCommands.RESOLUTION:
                     #     pass #print(val)
@@ -123,7 +125,7 @@ class mainStreamClass:
                         if time.perf_counter() > next_time:
                             next_time += 1.0
                             if self.verbose:
-                                print(f'FPS = {frame.camfps}')
+                                print(f'FPS = {frame.camfps:.2f}  {frame.streamfps:.2f}')
 
                         if self.verbose and frame.img is not None:
                             cv2.imshow(f'CAM {frame.srcid}', frame.img)
@@ -136,12 +138,13 @@ class mainStreamClass:
 
                                 fps.update()
                                 frame.streamfps = fps.fps()
+                else:
+                    time.sleep(1/self.framerate)
 
         except KeyboardInterrupt:
             print('Caught Keyboard interrupt')
 
-        except:
-            e = sys.exc_info()
+        except Exception as e:
             print('Caught Main Exception')
             print(e)
 
@@ -174,5 +177,8 @@ class mainStreamClass:
             pass
 
 if __name__ == '__main__':
-    mc = mainStreamClass(zmq_ip, zmq_port, args.n, verbose=False)
-    mc.startMain()    
+    try:
+        mc = mainStreamClass(zmq_ip, zmq_port, args.n, verbose=False)
+        mc.startMain()
+    except Exception as e:
+        print(e)

@@ -19,7 +19,7 @@ class Rate:
     def start(self):
         # start the timer
         self._numFrames = 0
-        self._start = time.time()
+        self._start = time.perf_counter()
         return self
 
     def reset(self):
@@ -27,7 +27,7 @@ class Rate:
         
     def stop(self):
         # stop the timer
-        self._end = time.time()
+        self._end = time.perf_counter()
 
     def update(self):
         # increment the total number of frames examined during the
@@ -37,7 +37,7 @@ class Rate:
     def elapsed(self):
         # return the total number of seconds between the start and
         # end interval
-        return (time.time() - self._start)
+        return (time.perf_counter() - self._start)
 
     def fps(self):
         # compute the (approximate) frames per second
