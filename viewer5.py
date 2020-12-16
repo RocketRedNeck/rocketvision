@@ -3,6 +3,7 @@ import argparse
 import copy
 import cv2
 import datetime
+from enum import Enum
 import json
 import numpy as np
 import operator
@@ -10,6 +11,7 @@ import os
 import psutil
 import pynvml # from pip install nvidia-ml-py
 import signal
+import smtplib, ssl
 from subprocess import Popen, PIPE
 import sys
 from threading import Thread, Event
@@ -47,6 +49,9 @@ def load_config_file(file):
 config = load_config_file("hare.json")['hare_options']
 camera_list = config['camera_list']
 zmq_port = config['zmq_port']
+sender_email = config['email_source']
+receiver_email = config['email_destination']
+password = config['password']
 
 context = zmq.Context()
 footage_socket = context.socket(zmq.SUB)
@@ -57,6 +62,10 @@ footage_socket.set_hwm(1)
 footage_socket.RCVTIMEO = 1000 # in milliseconds
 count = 0
 running = True
+
+ssl_port = 465
+ssl_context = ssl.create_default_context()
+
 
 fps = Rate()
 fps.start()
@@ -182,10 +191,11 @@ class ImageProcessor:
 
             if count == history[0] and timestamp == history[1]:
                 # already processed it
+                print(f'Already processed {self.srcid} : {count} : {timestamp}')
                 self.meta = []
  
         if self.meta != []:
-            self.history.update({self.srcid : (self.count, self.timestamp, self.outimg, self.meta)})
+            self.history.update({self.srcid : [self.count, self.timestamp, self.outimg, self.meta]})
             #self.list_overlay(self.meta, self.srcid, self.count, self.timestamp)
 
         return next_frame
@@ -246,9 +256,33 @@ for i in camera_list:
     camera_processes.append(p)
 
 
-latency_dict = [{},{},{},{},{},{},{},{}]
+class ReportState(Enum):
+    NOTHING = 0
+    REPORTED = 1
+    LOST = 2
+
+latency_dict = 8*[{}]
+
+report_state = 8*[ReportState.NOTHING]
+
 meta = []
 fps_time = time.perf_counter() + 1.0
+
+sms = True
+sms_tries = 3
+
+if sms:
+    with smtplib.SMTP_SSL("smtp.gmail.com", ssl_port, context=ssl_context) as server:
+        for i in range(sms_tries):
+            try:
+                server.login(sender_email, password)
+                server.sendmail(sender_email, receiver_email, "Subject: SecurityBunny Started")
+                break
+            except Exception as e:
+                print(f'[WARNING] {repr(e)}')
+                print('Trying SMTP login again')
+                time.sleep(1.0)
+
 while running:
     try:
         frame = footage_socket.recv_pyobj()
@@ -262,7 +296,7 @@ while running:
         r = (frame.srcid-1) // 3
         c = (frame.srcid-1) % 3
 
-        src_idx = frame.srcid - 1 # & 1
+        src_idx = frame.srcid - 1
 
         if w is not None and w > 0:
             images[r][c] = cv2.resize(frame.img, (int(w*scale),int(h*scale)))
@@ -270,8 +304,31 @@ while running:
                 metah = processor[src_idx].history[frame.srcid][3]
                 timestamp = processor[src_idx].history[frame.srcid][1]
                 if len(metah) > 0:
-                    if datetime.datetime.now().timestamp() - timestamp.timestamp() < 3.0:
-                        processor[src_idx].overlay_reticle(meta = metah, img = images[r][c], scale = scale, timestamp = timestamp)        
+                    if datetime.datetime.now().timestamp() - timestamp.timestamp() < 5.0:
+                        processor[src_idx].overlay_reticle(meta = metah, img = images[r][c], scale = scale, timestamp = timestamp)
+                        if report_state[src_idx] is ReportState.NOTHING or report_state[src_idx] is ReportState.LOST:
+                            flagged = any(['person' in label for x, label, cls in metah])
+                            message = f'Subject: Camera {src_idx+1} Alert at {timestamp.strftime("%X")}'
+
+                            if flagged:
+                                report_state[src_idx] = ReportState.REPORTED
+                                print(message)
+                                if sms:
+                                    with smtplib.SMTP_SSL("smtp.gmail.com", ssl_port, context=ssl_context) as server:
+                                        for i in range(sms_tries):
+                                            try:
+                                                server.login(sender_email, password)
+                                                server.sendmail(sender_email, receiver_email, message)
+                                                break
+                                            except Exception as e:
+                                                print(f'[WARNING] {repr(e)}')
+                                                print('Trying SMTP login again')
+                                                time.sleep(0.1)
+                    else:
+                        if report_state[src_idx] is ReportState.REPORTED:
+                            report_state[src_idx] = ReportState.LOST
+                        elif report_state[src_idx] is ReportState.LOST:
+                            report_state[src_idx] = ReportState.NOTHING
 
             # If the image processor is busy it will simply ignore this image
             # and return the previous meta
@@ -280,9 +337,6 @@ while running:
             if frame.srcid not in latency_dict[src_idx]:
                 latency_dict[src_idx].update({frame.srcid:0.0})
 
-            # src_list = sorted(latency_dict[src_idx].items(), key=operator.itemgetter(1), reverse=False)
-
-            # if frame.srcid == src_list[0][0]:
             if processor[src_idx].process(frame.img, frame.srcid, frame.count, frame.timestamp):
                 latency_string = f'{datetime.datetime.now().timestamp() - latency_dict[src_idx][frame.srcid]:.3f}'
                 latency_dict[src_idx].update({frame.srcid:frame.timestamp.timestamp()})
