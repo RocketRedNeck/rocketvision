@@ -76,14 +76,14 @@ gpuObj = pynvml.nvmlDeviceGetHandleByIndex(0)
 
 
 #nn = ResNet50()
-nn =  [ Yolo(img_size=256, conf_thres = 0.60) # default is 512 which yeilds about 3.8 fps (i7/940MX), 384 --> 5 fps, 256 --> 7 fps
-      , Yolo(img_size=256, conf_thres = 0.60)
-      , Yolo(img_size=256, conf_thres = 0.60)
-      , Yolo(img_size=256, conf_thres = 0.60)
-      , Yolo(img_size=256, conf_thres = 0.60)
-      , Yolo(img_size=256, conf_thres = 0.60)
-      , Yolo(img_size=256, conf_thres = 0.60)
-      , Yolo(img_size=256, conf_thres = 0.60)
+nn =  [ Yolo(img_size=256, conf_thres = 0.66) # default is 512 which yeilds about 3.8 fps (i7/940MX), 384 --> 5 fps, 256 --> 7 fps
+      , Yolo(img_size=256, conf_thres = 0.66)
+      , Yolo(img_size=256, conf_thres = 0.66)
+      , Yolo(img_size=256, conf_thres = 0.66)
+      , Yolo(img_size=256, conf_thres = 0.66)
+      , Yolo(img_size=256, conf_thres = 0.66)
+      , Yolo(img_size=256, conf_thres = 0.66)
+      , Yolo(img_size=256, conf_thres = 0.66)
     ]
 # nn = Yolo(cfg='ultrayolo/cfg/yolov3-tiny.cfg', \
 #                weights='ultrayolo/weights/yolov3-tiny.pt', \
@@ -282,6 +282,12 @@ if sms:
                 print(f'[WARNING] {repr(e)}')
                 print('Trying SMTP login again')
                 time.sleep(1.0)
+
+# Some default to remove some unbounding warnings
+h = 480
+w = 640
+d = 3
+z = np.zeros((int(h*scale),int(w*scale),d),dtype='uint8')
 
 while running:
     try:
