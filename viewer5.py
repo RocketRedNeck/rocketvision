@@ -344,22 +344,26 @@ while running:
                 latency_dict[src_idx].update({frame.srcid:0.0})
 
             if processor[src_idx].process(frame.img, frame.srcid, frame.count, frame.timestamp):
-                latency_string = f'{datetime.datetime.now().timestamp() - latency_dict[src_idx][frame.srcid]:.3f}'
-                latency_dict[src_idx].update({frame.srcid:frame.timestamp.timestamp()})
-                r = (frame.srcid-1) // 3
-                c = (frame.srcid-1) % 3
-                cv2.putText(images[r][c],
-                            latency_string,
-                            (int(225*scale),int(340*scale)),
-                            cv2.FONT_HERSHEY_DUPLEX,
-                            scale,
-                            (0,0,255),
-                            int(1*scale))          
-                cv2.rectangle(images[r][c],
-                              (0,0),
-                              (images[r][c].shape[1],images[r][c].shape[0]), 
-                              (0,0,255), 
-                              2)
+                color = (0,255,0)
+            else:
+                color = (0,0,255)
+
+            latency_string = f'{frame.count} : {datetime.datetime.now().timestamp() - latency_dict[src_idx][frame.srcid]:.3f}'
+            latency_dict[src_idx].update({frame.srcid:frame.timestamp.timestamp()})
+            r = (frame.srcid-1) // 3
+            c = (frame.srcid-1) % 3
+            cv2.putText(images[r][c],
+                        latency_string,
+                        (int(225*scale),int(340*scale)),
+                        cv2.FONT_HERSHEY_DUPLEX,
+                        scale,
+                        color,
+                        int(1*scale))          
+            cv2.rectangle(images[r][c],
+                            (0,0),
+                            (images[r][c].shape[1],images[r][c].shape[0]), 
+                            color, 
+                            2)
 
         # function calling 
         img_tile = concat_vh(images)
