@@ -271,23 +271,30 @@ fps_time = time.perf_counter() + 1.0
 sms = True
 sms_tries = 3
 
-if sms:
-    with smtplib.SMTP_SSL("smtp.gmail.com", ssl_port, context=ssl_context) as server:
-        for i in range(sms_tries):
-            try:
-                server.login(sender_email, password)
-                server.sendmail(sender_email, receiver_email, "Subject: SecurityBunny Started")
-                break
-            except Exception as e:
-                print(f'[WARNING] {repr(e)}')
-                print('Trying SMTP login again')
-                time.sleep(1.0)
+def do_sms(message):
+    print(message)
+    if sms:
+        with smtplib.SMTP_SSL("smtp.gmail.com", ssl_port, context=ssl_context) as server:
+            for i in range(sms_tries):
+                try:
+                    server.login(sender_email, password)
+                    server.sendmail(sender_email, receiver_email, f"Subject: {message}")
+                    break
+                except Exception as e:
+                    print(f'[WARNING] {repr(e)}')
+                    print('Trying SMTP login again')
+                    time.sleep(1.0)
+    
+
+do_sms('SecurityBunny Started')
 
 # Some default to remove some unbounding warnings
 h = 480
 w = 640
 d = 3
 z = np.zeros((int(h*scale),int(w*scale),d),dtype='uint8')
+
+cams_ok = False
 
 while running:
     try:
@@ -318,18 +325,7 @@ while running:
 
                             if flagged:
                                 report_state[src_idx] = ReportState.REPORTED
-                                print(message)
-                                if sms:
-                                    with smtplib.SMTP_SSL("smtp.gmail.com", ssl_port, context=ssl_context) as server:
-                                        for i in range(sms_tries):
-                                            try:
-                                                server.login(sender_email, password)
-                                                server.sendmail(sender_email, receiver_email, message)
-                                                break
-                                            except Exception as e:
-                                                print(f'[WARNING] {repr(e)}')
-                                                print('Trying SMTP login again')
-                                                time.sleep(0.1)
+                                do_sms(message)
                     else:
                         if report_state[src_idx] is ReportState.REPORTED:
                             report_state[src_idx] = ReportState.LOST
@@ -451,11 +447,38 @@ while running:
         if key == 27:
             running = False
 
+        cams_ok = True    
+
     except KeyboardInterrupt:
         break
     except zmq.error.Again:
+        if cams_ok:
+            count = 0
+            cams_ok = False
+
         count +=1
         print("Waiting... ", count)
+
+        if count > 10:
+            if len(camera_processes) > 0:
+                for p in camera_processes:
+                    p.send_signal(signal.SIGINT)
+
+                time.sleep(1.0)
+                do_sms('SecurityBunny RESTARTING CAMERA PROCESSES')
+                camera_processes = []
+                for i in camera_list:
+                    p = Popen(["python",
+                            "camera6.py", "--n", f"{i}"],
+                                stdin=PIPE,
+                                stdout=PIPE,
+                                stderr=PIPE,
+                                universal_newlines=True,
+                                bufsize=0
+                                ) # Windows only: creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
+                    camera_processes.append(p)
+
+
     except Exception as e:
         print(e)
         break
