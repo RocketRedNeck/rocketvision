@@ -243,7 +243,7 @@ images = [[None, None, None],
          ]
 scale = 0.6
 
-camera_file = 'camera6.py'
+camera_file = 'camera7.py'
 
 camera_processes = []
 for i in camera_list:
