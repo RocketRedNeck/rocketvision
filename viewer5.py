@@ -243,10 +243,12 @@ images = [[None, None, None],
          ]
 scale = 0.6
 
+camera_file = 'camera6.py'
+
 camera_processes = []
 for i in camera_list:
     p = Popen(["python",
-               "camera6.py", "--n", f"{i}"],
+               f"{camera_file}", "--n", f"{i}"],
                 stdin=PIPE,
                 stdout=PIPE,
                 stderr=PIPE,
@@ -284,9 +286,13 @@ def do_sms(message):
                     print(f'[WARNING] {repr(e)}')
                     print('Trying SMTP login again')
                     time.sleep(1.0)
-    
 
-do_sms('SecurityBunny Started')
+def thread_sms(x):
+    t = Thread(target=do_sms, kwargs=dict(message=x))
+    t.daemon = True
+    t.start()
+
+thread_sms('SecurityBunny Started')
 
 # Some default to remove some unbounding warnings
 h = 480
@@ -325,7 +331,7 @@ while running:
 
                             if flagged:
                                 report_state[src_idx] = ReportState.REPORTED
-                                do_sms(message)
+                                thread_sms(message)
                     else:
                         if report_state[src_idx] is ReportState.REPORTED:
                             report_state[src_idx] = ReportState.LOST
@@ -460,16 +466,17 @@ while running:
         print("Waiting... ", count)
 
         if count > 10:
+            count = 0
             if len(camera_processes) > 0:
                 for p in camera_processes:
                     p.send_signal(signal.SIGINT)
 
                 time.sleep(1.0)
-                do_sms('SecurityBunny RESTARTING CAMERA PROCESSES')
+                thread_sms('SecurityBunny RESTARTING CAMERA PROCESSES')
                 camera_processes = []
                 for i in camera_list:
                     p = Popen(["python",
-                            "camera6.py", "--n", f"{i}"],
+                            f"{camera_file}", "--n", f"{i}"],
                                 stdin=PIPE,
                                 stdout=PIPE,
                                 stderr=PIPE,
