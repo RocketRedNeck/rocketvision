@@ -76,14 +76,19 @@ gpuObj = pynvml.nvmlDeviceGetHandleByIndex(0)
 
 
 #nn = ResNet50()
-nn =  [ Yolo(img_size=256, conf_thres = 0.66) # default is 512 which yeilds about 3.8 fps (i7/940MX), 384 --> 5 fps, 256 --> 7 fps
-      , Yolo(img_size=256, conf_thres = 0.66)
-      , Yolo(img_size=256, conf_thres = 0.66)
-      , Yolo(img_size=256, conf_thres = 0.66)
-      , Yolo(img_size=256, conf_thres = 0.66)
-      , Yolo(img_size=256, conf_thres = 0.66)
-      , Yolo(img_size=256, conf_thres = 0.66)
-      , Yolo(img_size=256, conf_thres = 0.66)
+
+# default is 512 which yeilds about 3.8 fps (i7/940MX), 384 --> 5 fps, 256 --> 7 fps
+img_size = 256
+conf_thres = 0.66
+
+nn =  [ Yolo(img_size=img_size, conf_thres = conf_thres)
+      , Yolo(img_size=img_size, conf_thres = conf_thres)
+      , Yolo(img_size=img_size, conf_thres = conf_thres)
+      , Yolo(img_size=img_size, conf_thres = conf_thres)
+      , Yolo(img_size=img_size, conf_thres = conf_thres)
+      , Yolo(img_size=img_size, conf_thres = conf_thres)
+      , Yolo(img_size=img_size, conf_thres = conf_thres)
+      , Yolo(img_size=img_size, conf_thres = conf_thres)
     ]
 # nn = Yolo(cfg='ultrayolo/cfg/yolov3-tiny.cfg', \
 #                weights='ultrayolo/weights/yolov3-tiny.pt', \
