@@ -245,7 +245,8 @@ scale = 0.6
 
 camera_file = 'camera7.py'
 
-camera_processes = []
+camera_processes = {}
+camera_times = {}
 for i in camera_list:
     p = Popen(["python",
                f"{camera_file}", "--n", f"{i}"],
@@ -255,7 +256,8 @@ for i in camera_list:
                 universal_newlines=True,
                 bufsize=0
                 ) # Windows only: creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
-    camera_processes.append(p)
+    camera_processes.update({i:p})
+    camera_times.update({i:datetime.datetime.now().timestamp()})
 
 
 class ReportState(Enum):
@@ -269,6 +271,7 @@ report_state = 8*[ReportState.NOTHING]
 
 meta = []
 fps_time = time.perf_counter() + 1.0
+live_time = fps_time + 3600.00
 
 sms = True
 sms_tries = 3
@@ -317,11 +320,14 @@ while running:
 
         src_idx = frame.srcid - 1
 
+        camera_times.update({frame.srcid:datetime.datetime.now().timestamp()})
+
         if w is not None and w > 0:
             images[r][c] = cv2.resize(frame.img, (int(w*scale),int(h*scale)))
             if frame.srcid in processor[src_idx].history:
                 metah = processor[src_idx].history[frame.srcid][3]
                 timestamp = processor[src_idx].history[frame.srcid][1]
+
                 if len(metah) > 0:
                     if datetime.datetime.now().timestamp() - timestamp.timestamp() < 5.0:
                         processor[src_idx].overlay_reticle(meta = metah, img = images[r][c], scale = scale, timestamp = timestamp)
@@ -376,7 +382,31 @@ while running:
 
         count += 1
 
+        if (time.perf_counter() > live_time):
+            live_time += 3600.0
+            thread_sms(f'SecurityBunny NOT DEAD YET')
+
         if (time.perf_counter() > fps_time):
+            for key in camera_times:
+                dt = datetime.datetime.now().timestamp() - camera_times[key]
+                if dt > 30.0:
+                    # This camera has not reported in a while
+                    # shut it down and try to restart it
+                    camera_processes[key].send_signal(signal.SIGINT)
+
+                    thread_sms(f'SecurityBunny RESTARTING CAMERA {key} : {dt}')
+
+                    p = Popen(["python",
+                            f"{camera_file}", "--n", f"{key}"],
+                                stdin=PIPE,
+                                stdout=PIPE,
+                                stderr=PIPE,
+                                universal_newlines=True,
+                                bufsize=0
+                                ) # Windows only: creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
+                    camera_processes.update({key:p})
+                    camera_times.update({key:datetime.datetime.now().timestamp()})
+
             fps_time += 1.0
             font_scale = 1.75
             font = cv2.FONT_HERSHEY_SIMPLEX
@@ -465,15 +495,16 @@ while running:
         count +=1
         print("Waiting... ", count)
 
-        if count > 10:
+        if count > 30:
             count = 0
             if len(camera_processes) > 0:
-                for p in camera_processes:
-                    p.send_signal(signal.SIGINT)
+                for key in camera_processes:
+                    camera_processes[key].send_signal(signal.SIGINT)
 
                 time.sleep(1.0)
                 thread_sms('SecurityBunny RESTARTING CAMERA PROCESSES')
-                camera_processes = []
+                camera_processes = {}
+                camera_times = {}
                 for i in camera_list:
                     p = Popen(["python",
                             f"{camera_file}", "--n", f"{i}"],
@@ -483,7 +514,8 @@ while running:
                                 universal_newlines=True,
                                 bufsize=0
                                 ) # Windows only: creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
-                    camera_processes.append(p)
+                    camera_processes.update({i:p})
+                    camera_times.update({i:datetime.datetime.now().timestamp()})
 
 
     except Exception as e:
@@ -492,5 +524,5 @@ while running:
 
 cv2.destroyAllWindows()
 pynvml.nvmlShutdown()
-for p in camera_processes:
-    p.send_signal(signal.SIGINT)
+for key in camera_processes:
+    camera_processes[key].send_signal(signal.SIGINT)
