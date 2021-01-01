@@ -853,7 +853,7 @@ def plot_reticle(x, img, color=None, label=None, line_thickness=None, scale = 1,
         t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[0]
         #c2 = c1[0] + t_size[0], c1[1] + t_size[1] - 3 #- t_size[1] - 3 #+ 10 #
         #cv2.rectangle(img, c1, c2, [100,100,100], -1)  # filled
-        cv2.putText(img, label, ((c1[0]+c2[0])//2 - 5,(c1[1]+c2[1])//2 - 5), 0, tl / 3, color, thickness=tf, lineType=cv2.LINE_AA)
+        cv2.putText(img, label, ((c1[0]+c2[0])//2 - 5,(c1[1]+c2[1])//2 + 5), 0, tl / 3, (0,255,255), thickness=tf, lineType=cv2.LINE_AA)
         # cv2.putText(img, label, (c1[0], c2[1] - 1), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
         # if timestamp is None or not isinstance(timestamp,datetime.datetime):
         #     timestamp = "No Timestamp"

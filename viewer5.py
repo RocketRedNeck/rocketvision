@@ -79,25 +79,24 @@ gpuObj = pynvml.nvmlDeviceGetHandleByIndex(0)
 
 # default is 512 which yeilds about 3.8 fps (i7/940MX), 384 --> 5 fps, 256 --> 7 fps
 img_size = 256
-conf_thres = 0.66
+conf_thres = 0.60
+names='ultrayolo/data/coco.names'
 
-nn =  [ Yolo(img_size=img_size, conf_thres = conf_thres)
-      , Yolo(img_size=img_size, conf_thres = conf_thres)
-      , Yolo(img_size=img_size, conf_thres = conf_thres)
-      , Yolo(img_size=img_size, conf_thres = conf_thres)
-      , Yolo(img_size=img_size, conf_thres = conf_thres)
-      , Yolo(img_size=img_size, conf_thres = conf_thres)
-      , Yolo(img_size=img_size, conf_thres = conf_thres)
-      , Yolo(img_size=img_size, conf_thres = conf_thres)
+cfg='ultrayolo/cfg/yolov3.cfg'
+weights='ultrayolo/weights/yolov3.pt'
+
+# cfg='ultrayolo/cfg/yolov3-tiny.cfg'
+# weights='ultrayolo/weights/yolov3-tiny.pt'
+
+nn =  [ Yolo(img_size=img_size, conf_thres = conf_thres, cfg = cfg, weights = weights)
+      , Yolo(img_size=img_size, conf_thres = conf_thres, cfg = cfg, weights = weights)
+      , Yolo(img_size=img_size, conf_thres = conf_thres, cfg = cfg, weights = weights)
+      , Yolo(img_size=img_size, conf_thres = conf_thres, cfg = cfg, weights = weights)
+      , Yolo(img_size=img_size, conf_thres = conf_thres, cfg = cfg, weights = weights)
+      , Yolo(img_size=img_size, conf_thres = conf_thres, cfg = cfg, weights = weights)
+      , Yolo(img_size=img_size, conf_thres = conf_thres, cfg = cfg, weights = weights)
+      , Yolo(img_size=img_size, conf_thres = conf_thres, cfg = cfg, weights = weights)
     ]
-# nn = Yolo(cfg='ultrayolo/cfg/yolov3-tiny.cfg', \
-#                weights='ultrayolo/weights/yolov3-tiny.pt', \
-#                conf_thres = 0.2)
-
-# nn2 = Yolo(cfg='ultrayolo/cfg/yolov3-tiny.cfg', \
-#                weights='ultrayolo/weights/yolov3-tiny.pt', \
-#                conf_thres = 0.2)
-
 
 count = 0
 
@@ -201,7 +200,6 @@ class ImageProcessor:
  
         if self.meta != []:
             self.history.update({self.srcid : [self.count, self.timestamp, self.outimg, self.meta]})
-            #self.list_overlay(self.meta, self.srcid, self.count, self.timestamp)
 
         return next_frame
 
@@ -211,10 +209,8 @@ class ImageProcessor:
         self.stopped = False
         self.running = True
         while (self.running):
-            if self.event.wait(0.250):
-                #print(f"IMAGE PROCESSING frame {self._count}")
+            if self.event.wait(0.1):
                 self._meta = self._process.process(source0 = self._img, overlay = False)
-                #print(f"Frame {self._count} Processed")
                 self.fps.update()
                 self.event.clear()
 
@@ -338,7 +334,10 @@ while running:
                         processor[src_idx].overlay_reticle(meta = metah, img = images[r][c], scale = scale, timestamp = timestamp)
                         if report_state[src_idx] is ReportState.NOTHING or report_state[src_idx] is ReportState.LOST:
                             flagged = any(['person' in label for x, label, cls in metah])
-                            message = f'Subject: Camera {src_idx+1} Alert at {timestamp.strftime("%X")}'
+                            message = \
+f'''Subject: Camera {src_idx+1} Alert at {timestamp.strftime("%X")}
+{[label for x, label, cls in metah]}
+'''
 
                             if flagged:
                                 report_state[src_idx] = ReportState.REPORTED
