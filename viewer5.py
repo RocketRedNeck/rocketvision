@@ -79,7 +79,8 @@ gpuObj = pynvml.nvmlDeviceGetHandleByIndex(0)
 
 # default is 512 which yeilds about 3.8 fps (i7/940MX), 384 --> 5 fps, 256 --> 7 fps
 img_size = 256
-conf_thres = 0.60
+conf_thres = 0.2
+person_threshold = 0.67
 names='ultrayolo/data/coco.names'
 
 cfg='ultrayolo/cfg/yolov3.cfg'
@@ -333,14 +334,24 @@ while running:
                     if datetime.datetime.now().timestamp() - timestamp.timestamp() < 5.0:
                         processor[src_idx].overlay_reticle(meta = metah, img = images[r][c], scale = scale, timestamp = timestamp)
                         if report_state[src_idx] is ReportState.NOTHING or report_state[src_idx] is ReportState.LOST:
-                            flagged = any(['person' in label for x, label, cls in metah])
-                            message = \
-f'''Subject: Camera {src_idx+1} Alert at {timestamp.strftime("%X")}
-{[label for x, label, cls in metah]}
-'''
+                            people = ['person' in label for x, label, cls in metah]
+                            flagged = any(people)
+                            if flagged:
+                                flagged = False
+                                for x, label, cls in metah:
+                                    if 'person' in label:
+                                        try:
+                                            x = label.split(' ')
+                                            flagged |= float(x[-1]) > person_threshold
+                                        except:
+                                            pass
 
                             if flagged:
                                 report_state[src_idx] = ReportState.REPORTED
+                                message = \
+f'''Subject: Camera {src_idx+1} Alert at {timestamp.strftime("%c")}
+{[label for x, label, cls in metah]}
+'''
                                 thread_sms(message)
                     else:
                         if report_state[src_idx] is ReportState.REPORTED:

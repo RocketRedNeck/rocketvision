@@ -844,7 +844,17 @@ def plot_one_box(x, img, color=None, label=None, line_thickness=None):
 def plot_reticle(x, img, color=None, label=None, line_thickness=None, scale = 1, timestamp = None):
     # Plots one bounding box on image img
     tl = line_thickness or round(0.001 * (img.shape[0] + img.shape[1]) / 2) + 1  # line thickness
-    color = (0,255,0) #color or [random.randint(0, 255) for _ in range(3)]
+    conf = float(label.split(' ')[-1])
+    if conf > 0.7:
+        color = (0,255,0)   # B,G,R - Green
+    elif conf > 0.4:
+        color = (0,255,255) # Yellow
+    elif conf > 0.25:
+        color = (0,167,255) # Orange
+    else:
+        color = (0,0,255)
+
+    # color = (0,255,0) #color or [random.randint(0, 255) for _ in range(3)]
     c1, c2 = (int(x[0]*scale), int(x[1]*scale)), (int(x[2]*scale), int(x[3]*scale))
     cv2.rectangle(img, c1, c2, color, thickness=tl)
     cv2.circle(img, ((c1[0]+c2[0])//2,(c1[1]+c2[1])//2),10,color)
@@ -853,7 +863,7 @@ def plot_reticle(x, img, color=None, label=None, line_thickness=None, scale = 1,
         t_size = cv2.getTextSize(label, 0, fontScale=tl / 3, thickness=tf)[0]
         #c2 = c1[0] + t_size[0], c1[1] + t_size[1] - 3 #- t_size[1] - 3 #+ 10 #
         #cv2.rectangle(img, c1, c2, [100,100,100], -1)  # filled
-        cv2.putText(img, label, ((c1[0]+c2[0])//2 - 5,(c1[1]+c2[1])//2 + 5), 0, tl / 3, (0,255,255), thickness=tf, lineType=cv2.LINE_AA)
+        cv2.putText(img, label, ((c1[0]+c2[0])//2 - 5,(c1[1]+c2[1])//2 + 5), 0, tl / 3, color, thickness=tf, lineType=cv2.LINE_AA)
         # cv2.putText(img, label, (c1[0], c2[1] - 1), 0, tl / 3, [225, 255, 255], thickness=tf, lineType=cv2.LINE_AA)
         # if timestamp is None or not isinstance(timestamp,datetime.datetime):
         #     timestamp = "No Timestamp"
