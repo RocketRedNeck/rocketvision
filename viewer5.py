@@ -369,7 +369,7 @@ f'''Subject: Camera {src_idx+1} Alert at {timestamp.strftime("%c")}
             if processor[src_idx].process(frame.img, frame.srcid, frame.count, frame.timestamp):
                 color = (0,255,0)
             else:
-                color = (0,0,255)
+                color = (0,255,255)
 
             latency_string = f'{frame.count} : {datetime.datetime.now().timestamp() - latency_dict[src_idx][frame.srcid]:.3f}'
             latency_dict[src_idx].update({frame.srcid:frame.timestamp.timestamp()})
