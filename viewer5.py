@@ -6,6 +6,9 @@ import datetime
 from enum import Enum
 import json
 import numpy as np
+from email.mime.text import MIMEText
+from email.mime.image import MIMEImage
+from email.mime.multipart import MIMEMultipart
 import operator
 import os
 import psutil
@@ -278,24 +281,43 @@ live_time = fps_time + 3600.00
 sms = True
 sms_tries = 3
 
-def do_sms(message):
-    print(message)
-    if sms:
-        with smtplib.SMTP_SSL("smtp.gmail.com", ssl_port, context=ssl_context) as server:
-            for i in range(sms_tries):
-                try:
-                    server.login(sender_email, password)
-                    server.sendmail(sender_email, receiver_email, f"Subject: {message}")
-                    break
-                except Exception as e:
-                    print(f'[WARNING] {repr(e)}')
-                    print('Trying SMTP login again')
-                    time.sleep(1.0)
+def do_sms(message, image_file = None):
+    msg = MIMEMultipart()
+    msg['Subject'] = message
+    msg['From'] = sender_email
+    msg['To'] = ', '.join(receiver_email)
 
-def thread_sms(x):
-    t = Thread(target=do_sms, kwargs=dict(message=x))
-    t.daemon = True
-    t.start()
+    if image_file is not None:
+        img_data = open(image_file, 'rb').read()
+        image = MIMEImage(img_data, name='snapshot')
+        msg.attach(image)
+
+    print(msg['Subject'])
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", ssl_port, context=ssl_context) as server:
+        for i in range(sms_tries):
+            try:
+                server.login(sender_email, password)
+                server.sendmail(sender_email, receiver_email, msg.as_string())
+                break
+            except Exception as e:
+                print(f'[WARNING] {repr(e)}')
+                print('Trying SMTP login again')
+                time.sleep(1.0)
+
+    if image_file is not None:
+        os.remove(image_file)
+
+def thread_sms(message, image = None):
+    if sms:
+        if image is not None:
+            fname = './' + str(time.perf_counter_ns()) + '.png'
+            cv2.imwrite(fname,image)
+        else:
+            fname = None
+        t = Thread(target=do_sms, kwargs=dict(message=message, image_file = fname))
+        t.daemon = True
+        t.start()
 
 thread_sms('SecurityBunny Started')
 
@@ -352,7 +374,7 @@ while running:
 f'''Subject: Camera {src_idx+1} Alert at {timestamp.strftime("%c")}
 {[label for x, label, cls in metah]}
 '''
-                                thread_sms(message)
+                                thread_sms(message, image = images[r][c])
                     else:
                         if report_state[src_idx] is ReportState.REPORTED:
                             report_state[src_idx] = ReportState.LOST
