@@ -287,12 +287,14 @@ def do_sms(message, image_file = None):
     msg['From'] = sender_email
     msg['To'] = ', '.join(receiver_email)
 
+    print(msg['Subject'])
+    text = MIMEText(message)
+    msg.attach(text)
+
     if image_file is not None:
         img_data = open(image_file, 'rb').read()
         image = MIMEImage(img_data, name='snapshot')
         msg.attach(image)
-
-    print(msg['Subject'])
 
     with smtplib.SMTP_SSL("smtp.gmail.com", ssl_port, context=ssl_context) as server:
         for i in range(sms_tries):
