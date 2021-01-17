@@ -287,7 +287,6 @@ def do_sms(message, image_file = None):
     msg['From'] = sender_email
     msg['To'] = ', '.join(receiver_email)
 
-    print(msg['Subject'])
     text = MIMEText(message)
     msg.attach(text)
 
@@ -301,6 +300,7 @@ def do_sms(message, image_file = None):
             try:
                 server.login(sender_email, password)
                 server.sendmail(sender_email, receiver_email, msg.as_string())
+                print(f'EMAIL SENT for {message}')
                 break
             except Exception as e:
                 print(f'[WARNING] {repr(e)}')
@@ -311,6 +311,7 @@ def do_sms(message, image_file = None):
         os.remove(image_file)
 
 def thread_sms(message, image = None):
+    print(message)
     if sms:
         if image is not None:
             fname = './' + str(time.perf_counter_ns()) + '.png'
@@ -361,6 +362,7 @@ while running:
                             people = ['person' in label for x, label, cls in metah]
                             flagged = any(people)
                             if flagged:
+                                #print(f'Camera {src_idx + 1} may have found people')
                                 flagged = False
                                 for x, label, cls in metah:
                                     if 'person' in label:
@@ -373,7 +375,7 @@ while running:
                             if flagged:
                                 report_state[src_idx] = ReportState.REPORTED
                                 message = \
-f'''Subject: Camera {src_idx+1} Alert at {timestamp.strftime("%c")}
+f'''Camera {src_idx+1} Alert at {timestamp.strftime("%c")}
 {[label for x, label, cls in metah]}
 '''
                                 thread_sms(message, image = images[r][c])
