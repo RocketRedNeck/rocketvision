@@ -452,69 +452,87 @@ f'''Camera {src_idx+1} Alert at {timestamp.strftime("%c")}
             font_scale = 1.75
             font = cv2.FONT_HERSHEY_SIMPLEX
             images[2][2] = copy.copy(z)
+            y = 30
+            dy = 30
             cv2.putText(images[2][2],
                         f'FPS  = {fps.fps():.1f}',
-                        (int(0*scale),int(30*scale)),
+                        (int(0*scale),int(y*scale)),
                         font,
                         scale / font_scale,
                         (0,255,0),
                         int(1*scale))
 
+            y += dy
             percs = psutil.cpu_percent(percpu=True)
             cv2.putText(images[2][2],
                         f'CPU % = {percs}',
-                        (int(0*scale),int(60*scale)),
+                        (int(0*scale),int(y*scale)),
                         font,
                         scale / font_scale,
                         (0,255,0),
                         int(1*scale))
 
+            y += dy
             freqs = psutil.cpu_freq(percpu=True)
             freqs = [f'{f.current/1000:.1f}' for f in freqs]
             cv2.putText(images[2][2],
                         f'CPU f = {freqs}',
-                        (int(0*scale),int(90*scale)),
+                        (int(0*scale),int(y*scale)),
                         font,
                         scale / font_scale,
                         (0,255,0),
                         int(1*scale))
 
+            y += dy
             loads = psutil.getloadavg()
             cv2.putText(images[2][2],
                         f'LOAD  = {loads}',
-                        (int(0*scale),int(120*scale)),
+                        (int(0*scale),int(y*scale)),
                         font,
                         scale / font_scale,
                         (0,255,0),
                         int(1*scale))
 
+            y += dy
+            mems = psutil.virtual_memory()
+            cv2.putText(images[2][2],
+                        f'MEM % = {mems[2]}',
+                        (int(0*scale),int(y*scale)),
+                        font,
+                        scale / font_scale,
+                        (0,255,0),
+                        int(1*scale))
+
+
+            y += dy
             temps = psutil.sensors_temperatures()
             package_temp = temps['coretemp'][0].current
             package_limit = temps['coretemp'][0].high
             cv2.putText(images[2][2],
                         f'CPU T = {package_temp:.1f} C',
-                        (int(0*scale),int(150*scale)),
+                        (int(0*scale),int(y*scale)),
                         font,
                         scale / font_scale,
                         (0,255,0) if package_temp < package_limit else (0,255,255),
                         int(1*scale))
 
+            y += dy
             gpu_percs = pynvml.nvmlDeviceGetUtilizationRates(gpuObj)
             gpu_mem   = pynvml.nvmlDeviceGetMemoryInfo(gpuObj)
             cv2.putText(images[2][2],
                         f'GPU % = Time : {gpu_percs.gpu}  Mem : {100*gpu_mem.used/gpu_mem.total:.0f}',
-                        (int(0*scale),int(180*scale)),
+                        (int(0*scale),int(y*scale)),
                         font,
                         scale / font_scale,
                         (0,255,0),
                         int(1*scale))
 
-
+            y += dy
             gpu_temp = pynvml.nvmlDeviceGetTemperature(gpuObj, pynvml.NVML_TEMPERATURE_GPU)
             package_limit = 93                        
             cv2.putText(images[2][2],
                         f'GPU T = {gpu_temp:.1f} C',
-                        (int(0*scale),int(210*scale)),
+                        (int(0*scale),int(y*scale)),
                         font,
                         scale / font_scale,
                         (0,255,0) if gpu_temp < package_limit else (0,255,255),
