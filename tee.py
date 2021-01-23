@@ -10,7 +10,7 @@ import threading
 # 3rd party imports
 
 # Local imports
-from .freeze_it import freeze_it
+from freeze_it import freeze_it
 
 colorama.init(convert=True)
 

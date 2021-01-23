@@ -7,6 +7,7 @@ from torchvision import transforms
 
 import cv2
 import datetime
+import itertools
 import torch
 import time
 
@@ -157,6 +158,34 @@ class Yolo:
                     #if "person" in label or "dog" in label or "cat" in label:
                     self.meta.append([xyxy, label, cls])
                 
+                # TODO: Scan the meta data for related low-confidence class that are in close proximity
+                # to each other.
+                #   EXAMPLE: If the centers of a car, bus, truck are close and the bounding
+                #            rectangles are substantially overlapped then we can just call it
+                #            a "vehicle" and present the bounding box as the largest extent of
+                #            each bounding box combined
+                # vehicles = [[xyxy, label, cls] for xyxy, label, cls in self.meta if self.names[int(cls)] in 'car truck bus']
+
+                # index = range(len(vehicles))
+                # for i, j in itertools.combinations(index, 2):
+                #     a = vehicles[i]
+                #     b = vehicles[j]
+                #     a1 = a[0][0]
+                #     a2 = a[0][1]
+                #     cax = (a1[0]+a2[0])/2
+                #     cay = (a1[1]+a2[1])/2
+                #     b1 = b[0][0]
+                #     b2 = b[0][1]
+                #     cbx = (b1[0]+b2[0])/2
+                #     cby = (b1[1]+b2[1])/2
+                #     d = math.sqrt(math.fabs(cbx - cax)**2 + math.fabs(cby - cay)**2)
+                #     if d <= 10:
+                #         # There is central overlap between two vehicle detections
+                #         # They need to be merged into one
+                #         pass
+
+                # animals = [[xyxy, label, cls] for xyxy, label, cls in self.meta if self.names[int(cls)] in 'dog cat horse sheep bear cow elephant zebra giraffe bird']
+
                 if overlay:
                     self.overlay(self.meta,source0)
 

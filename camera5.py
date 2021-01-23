@@ -187,6 +187,6 @@ def process(address, port, cam_num, verbose=False):
 
 if __name__ == '__main__':
     try:
-        process(zmq_ip, zmq_port, args.n, verbose=False)
+        process(zmq_ip, zmq_port, args.n, verbose=True)
     except: # Exception as e:
         pass #print(e)

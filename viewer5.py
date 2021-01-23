@@ -23,9 +23,11 @@ import torch
 import zmq
 
 from rocketvision import Rate
+from tee import simple_log
 from yolo import Yolo
 #from resnet50 import ResNet50
 
+simple_log(__file__)
 
 
 # Create arg parser
@@ -202,8 +204,7 @@ class ImageProcessor:
                 print(f'Already processed {self.srcid} : {count} : {timestamp}')
                 self.meta = []
  
-        if self.meta != []:
-            self.history.update({self.srcid : [self.count, self.timestamp, self.outimg, self.meta]})
+        self.history.update({self.srcid : [self.count, self.timestamp, self.outimg, self.meta]})
 
         return next_frame
 
@@ -300,7 +301,7 @@ def do_sms(message, image_file = None):
             try:
                 server.login(sender_email, password)
                 server.sendmail(sender_email, receiver_email, msg.as_string())
-                print(f'EMAIL SENT for {message}')
+                #print(f'EMAIL SENT for {message}')
                 break
             except Exception as e:
                 print(f'[WARNING] {repr(e)}')
@@ -335,6 +336,7 @@ cams_ok = False
 while running:
     try:
         frame = footage_socket.recv_pyobj()
+        now = datetime.datetime.now()
         if images[0][0] is None:
             h,w,d = frame.img.shape
             z = np.zeros((int(h*scale),int(w*scale),d),dtype='uint8')
@@ -347,7 +349,7 @@ while running:
 
         src_idx = frame.srcid - 1
 
-        camera_times.update({frame.srcid:datetime.datetime.now().timestamp()})
+        camera_times.update({frame.srcid:now.timestamp()})
 
         if w is not None and w > 0:
             images[r][c] = cv2.resize(frame.img, (int(w*scale),int(h*scale)))
@@ -356,34 +358,69 @@ while running:
                 timestamp = processor[src_idx].history[frame.srcid][1]
 
                 if len(metah) > 0:
-                    if datetime.datetime.now().timestamp() - timestamp.timestamp() < 5.0:
+                    latency = now.timestamp() - timestamp.timestamp()
+                    # if the image is more than a few seconds old then displaying
+                    # the reticle could be a problem, especially if the detections are moving
+                    if latency < 5.0:
                         processor[src_idx].overlay_reticle(meta = metah, img = images[r][c], scale = scale, timestamp = timestamp)
-                        if report_state[src_idx] is ReportState.NOTHING or report_state[src_idx] is ReportState.LOST:
-                            people = ['person' in label for x, label, cls in metah]
-                            flagged = any(people)
-                            if flagged:
-                                #print(f'Camera {src_idx + 1} may have found people')
-                                flagged = False
-                                for x, label, cls in metah:
-                                    if 'person' in label:
-                                        try:
-                                            x = label.split(' ')
-                                            flagged |= float(x[-1]) > person_threshold
-                                        except:
-                                            pass
+                        people = ['person' in label for x, label, cls in metah]
+                        flagged = any(people)
+                        if flagged:
+                            # There may be people but we should verify the thresholds
+                            flagged = False
+                            for x, label, cls in metah:
+                                if 'person' in label:
+                                    try:
+                                        x = label.split(' ')
+                                        flagged |= float(x[-1]) > person_threshold
+                                    except:
+                                        pass
 
+                            # If still flagged and appears to be something new we will report it
                             if flagged:
-                                report_state[src_idx] = ReportState.REPORTED
-                                message = \
+                                if report_state[src_idx] is ReportState.NOTHING:
+                                    # This looks new
+                                    report_state[src_idx] = ReportState.REPORTED
+                                    message = \
 f'''Camera {src_idx+1} Alert at {timestamp.strftime("%c")}
 {[label for x, label, cls in metah]}
 '''
-                                thread_sms(message, image = images[r][c])
+                                    thread_sms(message, image = images[r][c])                                
+                                elif report_state[src_idx] is ReportState.LOST:
+                                    # We only just lost the track, so just bring
+                                    # back the reported stated
+                                    print(f'Camera {src_idx + 1} track restored at {now.strftime("%c")}')
+                                    report_state[src_idx] = ReportState.REPORTED
+
+                        else:
+                            # Nothing was flagged in this frame
+                            # It could be a glitch where the subject just briefly disappeared
+                            # So demote the track to a lost state
+                            # TODO: May add a counter or timer to when lost transitions back
+                            # to nothing
+                            if report_state[src_idx] is ReportState.REPORTED:
+                                print(f'Camera {src_idx + 1} lost track at {now.strftime("%c")}')
+                                report_state[src_idx] = ReportState.LOST
+                            elif report_state[src_idx] is ReportState.LOST:
+                                print(f'Camera {src_idx + 1} cleared at {now.strftime("%c")}')
+                                report_state[src_idx] = ReportState.NOTHING
                     else:
-                        if report_state[src_idx] is ReportState.REPORTED:
-                            report_state[src_idx] = ReportState.LOST
-                        elif report_state[src_idx] is ReportState.LOST:
-                            report_state[src_idx] = ReportState.NOTHING
+                        # Massive latency issue
+                        # Track state is invalid
+                        print(f'Camera {src_idx + 1} latency is large: {latency}')
+                        report_state[src_idx] = ReportState.NOTHING
+                else:
+                    # No meta data in this frame
+                    # It could be a glitch where the subject just briefly disappeared
+                    # So demote the track to a lost state
+                    # TODO: May add a counter or timer to when lost transitions back
+                    # to nothing
+                    if report_state[src_idx] is ReportState.REPORTED:
+                        print(f'Camera {src_idx + 1} lost track at {now.strftime("%c")}')
+                        report_state[src_idx] = ReportState.LOST
+                    elif report_state[src_idx] is ReportState.LOST:
+                        print(f'Camera {src_idx + 1} cleared at {now.strftime("%c")}')
+                        report_state[src_idx] = ReportState.NOTHING
 
             # If the image processor is busy it will simply ignore this image
             # and return the previous meta
