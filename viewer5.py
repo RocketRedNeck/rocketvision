@@ -268,8 +268,9 @@ for i in camera_list:
 
 class ReportState(Enum):
     NOTHING = 0
-    REPORTED = 1
-    LOST = 2
+    MAYBE = 1
+    REPORTED = 2
+    LOST = 3
 
 latency_dict = 8*[{}]
 
@@ -326,7 +327,7 @@ def thread_sms(message, image = None):
 thread_sms('SecurityBunny Started')
 
 # Some default to remove some unbounding warnings
-h = 480
+h = 360
 w = 640
 d = 3
 z = np.zeros((int(h*scale),int(w*scale),d),dtype='uint8')
@@ -379,7 +380,10 @@ while running:
                             # If still flagged and appears to be something new we will report it
                             if flagged:
                                 if report_state[src_idx] is ReportState.NOTHING:
-                                    # This looks new
+                                    # This looks new lets see if we get another
+                                    # consecutive detection
+                                    report_state[src_idx] = ReportState.MAYBE
+                                elif report_state[src_idx] is ReportState.MAYBE:
                                     report_state[src_idx] = ReportState.REPORTED
                                     message = \
 f'''Camera {src_idx+1} Alert at {timestamp.strftime("%c")}
@@ -391,18 +395,23 @@ f'''Camera {src_idx+1} Alert at {timestamp.strftime("%c")}
                                     # back the reported stated
                                     print(f'Camera {src_idx + 1} track restored at {now.strftime("%c")}')
                                     report_state[src_idx] = ReportState.REPORTED
+                            elif report_state[src_idx] is ReportState.MAYBE:
+                                # The flag dropped after a maybe-detection
+                                # but it must have been nothing
+                                report_state[src_idx] = ReportState.NOTHING
 
                         else:
                             # Nothing was flagged in this frame
                             # It could be a glitch where the subject just briefly disappeared
-                            # So demote the track to a lost state
-                            # TODO: May add a counter or timer to when lost transitions back
-                            # to nothing
+                            # or wasn't anything persistent
+                            # So demote the track 
                             if report_state[src_idx] is ReportState.REPORTED:
                                 print(f'Camera {src_idx + 1} lost track at {now.strftime("%c")}')
                                 report_state[src_idx] = ReportState.LOST
                             elif report_state[src_idx] is ReportState.LOST:
                                 print(f'Camera {src_idx + 1} cleared at {now.strftime("%c")}')
+                                report_state[src_idx] = ReportState.NOTHING
+                            elif report_state[src_idx] is ReportState.MAYBE:
                                 report_state[src_idx] = ReportState.NOTHING
                     else:
                         # Massive latency issue
@@ -412,14 +421,15 @@ f'''Camera {src_idx+1} Alert at {timestamp.strftime("%c")}
                 else:
                     # No meta data in this frame
                     # It could be a glitch where the subject just briefly disappeared
-                    # So demote the track to a lost state
-                    # TODO: May add a counter or timer to when lost transitions back
-                    # to nothing
+                    # or wasn't anything persistent
+                    # So demote the track
                     if report_state[src_idx] is ReportState.REPORTED:
                         print(f'Camera {src_idx + 1} lost track at {now.strftime("%c")}')
                         report_state[src_idx] = ReportState.LOST
                     elif report_state[src_idx] is ReportState.LOST:
                         print(f'Camera {src_idx + 1} cleared at {now.strftime("%c")}')
+                        report_state[src_idx] = ReportState.NOTHING
+                    elif report_state[src_idx] is ReportState.MAYBE:
                         report_state[src_idx] = ReportState.NOTHING
 
             # If the image processor is busy it will simply ignore this image

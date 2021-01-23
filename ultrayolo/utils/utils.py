@@ -845,7 +845,7 @@ def plot_reticle(x, img, color=None, label=None, line_thickness=None, scale = 1,
     # Plots one bounding box on image img
     tl = line_thickness or round(0.001 * (img.shape[0] + img.shape[1]) / 2) + 1  # line thickness
     conf = float(label.split(' ')[-1])
-    if conf > 0.7:
+    if conf > 0.67:
         color = (0,255,0)   # B,G,R - Green
     elif conf > 0.4:
         color = (0,255,255) # Yellow
@@ -856,7 +856,7 @@ def plot_reticle(x, img, color=None, label=None, line_thickness=None, scale = 1,
 
     # color = (0,255,0) #color or [random.randint(0, 255) for _ in range(3)]
     c1, c2 = (int(x[0]*scale), int(x[1]*scale)), (int(x[2]*scale), int(x[3]*scale))
-    if c2[0]-c1[0] >= 40 and c2[1]-c1[1] >= 40:
+    if c2[0]-c1[0] >= 25 and c2[1]-c1[1] >= 25:
         cv2.rectangle(img, c1, c2, color, thickness=tl)
     cv2.circle(img, ((c1[0]+c2[0])//2,(c1[1]+c2[1])//2),10,color)
     if label:
