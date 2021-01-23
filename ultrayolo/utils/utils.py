@@ -856,7 +856,7 @@ def plot_reticle(x, img, color=None, label=None, line_thickness=None, scale = 1,
 
     # color = (0,255,0) #color or [random.randint(0, 255) for _ in range(3)]
     c1, c2 = (int(x[0]*scale), int(x[1]*scale)), (int(x[2]*scale), int(x[3]*scale))
-    if c2[0]-c1[0] >= 25 and c2[1]-c1[1] >= 25:
+    if c2[0]-c1[0] >= 40 and c2[1]-c1[1] >= 40:
         cv2.rectangle(img, c1, c2, color, thickness=tl)
     cv2.circle(img, ((c1[0]+c2[0])//2,(c1[1]+c2[1])//2),10,color)
     if label:
