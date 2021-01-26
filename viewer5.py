@@ -279,6 +279,7 @@ report_state = 8*[ReportState.NOTHING]
 meta = []
 fps_time = time.perf_counter() + 1.0
 live_time = fps_time + 3600.00
+live_count = 0
 
 sms = True
 sms_tries = 3
@@ -324,7 +325,7 @@ def thread_sms(message, image = None):
         t.daemon = True
         t.start()
 
-thread_sms('SecurityBunny Started')
+thread_sms('BlackHare Started')
 
 # Some default to remove some unbounding warnings
 h = 360
@@ -472,7 +473,8 @@ f'''Camera {src_idx+1} Alert at {timestamp.strftime("%c")}
 
         if (time.perf_counter() > live_time):
             live_time += 3600.0
-            thread_sms(f'SecurityBunny NOT DEAD YET')
+            live_count += 1
+            thread_sms(f'BlackHare NOT DEAD YET (Runtime = {live_count} hours)')
 
         if (time.perf_counter() > fps_time):
             for key in camera_times:
