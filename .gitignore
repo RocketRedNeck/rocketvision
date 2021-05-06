@@ -133,3 +133,5 @@ ultrayolo/weights/yolov3-tiny.pt
 .vscode/
 hare.json
 junk.txt
+viewer*.txt
+*.png
