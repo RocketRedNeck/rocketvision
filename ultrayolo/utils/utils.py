@@ -846,13 +846,13 @@ def plot_reticle(x, img, color=None, label=None, line_thickness=None, scale = 1,
     tl = line_thickness or round(0.001 * (img.shape[0] + img.shape[1]) / 2) + 1  # line thickness
     conf = float(label.split(' ')[-1])
     if conf > 0.67:
-        color = (0,255,0)   # B,G,R - Green
+        color = (0,int(255*conf),0)   # B,G,R - Green
     elif conf > 0.4:
-        color = (0,255,255) # Yellow
+        color = (0,int(255*conf),int(255*conf)) # Yellow
     elif conf > 0.25:
-        color = (0,167,255) # Orange
+        color = (0,int(167*conf),int(255*conf)) # Orange
     else:
-        color = (0,0,255)
+        color = (0,0,int(255*conf))
 
     # color = (0,255,0) #color or [random.randint(0, 255) for _ in range(3)]
     c1, c2 = (int(x[0]*scale), int(x[1]*scale)), (int(x[2]*scale), int(x[3]*scale))
