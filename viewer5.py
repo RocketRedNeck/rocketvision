@@ -363,62 +363,78 @@ while running:
                     latency = now.timestamp() - timestamp.timestamp()
                     # if the image is more than a few seconds old then displaying
                     # the reticle could be a problem, especially if the detections are moving
-                    if latency < 5.0:
-                        processor[src_idx].overlay_reticle(meta = metah, img = images[r][c], scale = scale, timestamp = timestamp)
-                        people = ['person' in label for x, label, cls in metah]
-                        flagged = any(people)
-                        if flagged:
-                            # There may be people but we should verify the thresholds
-                            flagged = False
-                            for x, label, cls in metah:
-                                if 'person' in label:
-                                    try:
-                                        x = label.split(' ')
-                                        flagged |= float(x[-1]) > person_threshold
-                                    except:
-                                        pass
+                    #if latency < 5.0:
+                    processor[src_idx].overlay_reticle(meta = metah, img = images[r][c], scale = scale, timestamp = timestamp)
+                    people = ['person' in label for x, label, cls in metah]
+                    flagged = any(people)
+                    if flagged:
+                        # There may be people but we should verify the thresholds
+                        flagged = False
+                        for x, label, cls in metah:
+                            if 'person' in label:
+                                try:
+                                    x = label.split(' ')
+                                    flagged |= float(x[-1]) > person_threshold
+                                except:
+                                    pass
 
-                            # If still flagged and appears to be something new we will report it
-                            if flagged:
-                                if report_state[src_idx] is ReportState.NOTHING:
-                                    # This looks new lets see if we get another
-                                    # consecutive detection
-                                    report_state[src_idx] = ReportState.MAYBE
-                                elif report_state[src_idx] is ReportState.MAYBE:
-                                    report_state[src_idx] = ReportState.REPORTED
-                                    message = \
+                        # If still flagged and appears to be something new we will report it
+                        if flagged:
+                            if report_state[src_idx] is ReportState.NOTHING:
+                                # This looks new lets see if we get another
+                                # consecutive detection
+                                report_state[src_idx] = ReportState.MAYBE
+                            elif report_state[src_idx] is ReportState.MAYBE:
+                                report_state[src_idx] = ReportState.REPORTED
+                                message = \
 f'''Camera {src_idx+1} Alert at {timestamp.strftime("%c")}
 {[label for x, label, cls in metah]}
 '''
-                                    thread_sms(message, image = images[r][c])                                
-                                elif report_state[src_idx] is ReportState.LOST:
-                                    # We only just lost the track, so just bring
-                                    # back the reported stated
-                                    print(f'Camera {src_idx + 1} track restored at {now.strftime("%c")}')
-                                    report_state[src_idx] = ReportState.REPORTED
-                            elif report_state[src_idx] is ReportState.MAYBE:
-                                # The flag dropped after a maybe-detection
-                                # but it must have been nothing
-                                report_state[src_idx] = ReportState.NOTHING
-
-                        else:
-                            # Nothing was flagged in this frame
-                            # It could be a glitch where the subject just briefly disappeared
-                            # or wasn't anything persistent
-                            # So demote the track 
-                            if report_state[src_idx] is ReportState.REPORTED:
-                                print(f'Camera {src_idx + 1} lost track at {now.strftime("%c")}')
-                                report_state[src_idx] = ReportState.LOST
+                                thread_sms(message, image = images[r][c])                                
                             elif report_state[src_idx] is ReportState.LOST:
-                                print(f'Camera {src_idx + 1} cleared at {now.strftime("%c")}')
-                                report_state[src_idx] = ReportState.NOTHING
-                            elif report_state[src_idx] is ReportState.MAYBE:
-                                report_state[src_idx] = ReportState.NOTHING
+                                # We only just lost the track, so just bring
+                                # back the reported stated
+                                print(f'Camera {src_idx + 1} track restored at {now.strftime("%c")}')
+                                report_state[src_idx] = ReportState.REPORTED
+                        elif report_state[src_idx] is ReportState.MAYBE:
+                            # The flag dropped after a maybe-detection
+                            # but it must have been nothing
+                            report_state[src_idx] = ReportState.NOTHING
+
                     else:
-                        # Massive latency issue
-                        # Track state is invalid
-                        print(f'Camera {src_idx + 1} latency is large: {latency}')
-                        report_state[src_idx] = ReportState.NOTHING
+                        # Nothing was flagged in this frame
+                        # It could be a glitch where the subject just briefly disappeared
+                        # or wasn't anything persistent
+                        # So demote the track 
+                        if report_state[src_idx] is ReportState.REPORTED:
+                            print(f'Camera {src_idx + 1} lost track at {now.strftime("%c")}')
+                            report_state[src_idx] = ReportState.LOST
+                        elif report_state[src_idx] is ReportState.LOST:
+                            print(f'Camera {src_idx + 1} cleared at {now.strftime("%c")}')
+                            report_state[src_idx] = ReportState.NOTHING
+                        elif report_state[src_idx] is ReportState.MAYBE:
+                            report_state[src_idx] = ReportState.NOTHING
+                    # else:
+                    #     # Massive latency issue
+                    #     # Track state is invalid
+                    #     print(f'Camera {src_idx + 1} latency is large: {latency}')
+                    #     report_state[src_idx] = ReportState.NOTHING
+                    #     # # This camera has not reported in a while
+                    #     # # shut it down and try to restart it
+                    #     # camera_processes[src_idx].send_signal(signal.SIGINT)
+
+                    #     # thread_sms(f'SecurityBunny LATENCY RESTART CAMERA {src_idx} : {dt}')
+
+                    #     # p = Popen(["python",
+                    #     #         f"{camera_file}", "--n", f"{src_idx}"],
+                    #     #             stdin=PIPE,
+                    #     #             stdout=PIPE,
+                    #     #             stderr=PIPE,
+                    #     #             universal_newlines=True,
+                    #     #             bufsize=0
+                    #     #             ) # Windows only: creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
+                    #     # camera_processes.update({src_idx:p})
+                    #     # camera_times.update({src_idx:datetime.datetime.now().timestamp()})                        
                 else:
                     # No meta data in this frame
                     # It could be a glitch where the subject just briefly disappeared
