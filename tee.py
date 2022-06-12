@@ -144,12 +144,14 @@ class Tee(object):
         if isinstance(self.console, Tee):
             self.console.console.flush()
 
-def simple_log(modulefile, timestamp = False, datastorage_path = '.'):
+def simple_log(modulefile, suffix = None, timestamp = False, datastorage_path = '.'):
     # Capture this module path, and base file name without the extension
     rootdir = os.path.dirname(os.path.abspath(modulefile))
     thisfilename = os.path.basename(modulefile)
     thismodname = os.path.splitext(thisfilename)[0]
 
+    if suffix is not None:
+        thismodname = thismodname + "_" + suffix
     if not os.path.exists(datastorage_path):
         os.mkdir(datastorage_path)    # Raises exception for bad paths
 

@@ -12,6 +12,7 @@ from threading import Event
 import zmq
 from rocketvision.rate import Rate
 import vid_streamv3 as vs
+from tee import simple_log
 
 
 # Create arg parser
@@ -31,6 +32,9 @@ help='Stream Number')
 
 # Parse the args
 args = parser.parse_args()
+logname = simple_log(__file__, str(args.n))
+
+print(f"Hello from Camera {args.n} : logname = {logname}\n")
 print(args)
 
 FILE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -41,7 +45,7 @@ def load_config_file(file):
 
 config = load_config_file("hare.json")['hare_options']
 rtsp_user = config['rtsp_user']
-password = config['password']
+password = config['mainpassword']
 rtsp_ip = config['rtsp_ip']
 zmq_ip = config['zmq_ip']
 zmq_port = config['zmq_port']
