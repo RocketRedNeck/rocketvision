@@ -49,6 +49,7 @@ password = config['mainpassword']
 rtsp_ip = config['rtsp_ip']
 zmq_ip = config['zmq_ip']
 zmq_port = config['zmq_port']
+frame_rate = config['frame_rate']
 
 class Frame:
     def __init__(self):
@@ -77,7 +78,7 @@ class mainStreamClass:
         self.cam_queue = None
         self.stopbit = None
         self.camlink = f'rtsp://{rtsp_user}:{password}@{rtsp_ip}//h264Preview_0{self.src}_sub'
-        self.framerate = 7
+        self.framerate = frame_rate
 
     
     def startMain(self):
