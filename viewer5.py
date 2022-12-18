@@ -225,8 +225,8 @@ class ImageProcessor:
     def overlay(self, meta, source):
         self._process.overlay(meta, source)
 
-    def overlay_reticle(self, meta, img, scale, timestamp):
-        self._process.overlay_reticle(meta=meta, img=img, scale=scale, timestamp = timestamp)
+    def overlay_reticle(self, meta, img, scale, sx, sy, timestamp):
+        self._process.overlay_reticle(meta=meta, img=img, scale=scale, sx=sx, sy=sy, timestamp = timestamp)
 
     def list_overlay(self, meta, srcid, count, timestamp):
         self._process.list_overlay(meta, srcid, count, timestamp)
@@ -354,6 +354,8 @@ while running:
         camera_times.update({frame.srcid:now.timestamp()})
 
         if w is not None and w > 0:
+            sx = h / frame.img.shape[0] 
+            sy = w / frame.img.shape[1]
             images[r][c] = cv2.resize(frame.img, (int(w*scale),int(h*scale)))
             if frame.srcid in processor[src_idx].history:
                 metah = processor[src_idx].history[frame.srcid][3]
@@ -364,7 +366,7 @@ while running:
                     # if the image is more than a few seconds old then displaying
                     # the reticle could be a problem, especially if the detections are moving
                     #if latency < 5.0:
-                    processor[src_idx].overlay_reticle(meta = metah, img = images[r][c], scale = scale, timestamp = timestamp)
+                    processor[src_idx].overlay_reticle(meta = metah, img = images[r][c], scale = scale, sx=sx, sy=sy, timestamp = timestamp)
                     people = ['person' in label for x, label, cls in metah]
                     flagged = any(people)
                     if flagged:
